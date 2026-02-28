@@ -1,0 +1,22 @@
+{
+  "name": "Homeschool Planner Webapp Dev Container",
+  "dockerComposeFile": [
+    "../docker-compose.yaml"
+  ],
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+        // Add your VS Code settings here, e.g.:
+        // "editor.tabSize": 4
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "postCreateCommand": "npm install && apk add --no-cache git"
+}
