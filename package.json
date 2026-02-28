@@ -10,6 +10,8 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "mongodb": "^7.1.0",
+    "mongoose": "^9.2.3",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
