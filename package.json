@@ -10,6 +10,9 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@apollo/server": "^5.4.0",
+    "@as-integrations/next": "^4.1.0",
+    "graphql": "^16.13.0",
     "mongodb": "^7.1.0",
     "mongoose": "^9.2.3",
     "next": "16.1.6",
