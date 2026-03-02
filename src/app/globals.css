@@ -1,8 +1,19 @@
+
 @import "tailwindcss";
+/* @source inline bg-red-100 bg-blue-100 bg-green-100 bg-yellow-100 bg-purple-100 bg-pink-100 bg-indigo-100 bg-gray-100 text-red-800 text-blue-800 text-green-800 text-yellow-800 text-purple-800 text-pink-800 text-indigo-800 text-gray-800 border-red-200 border-blue-200 border-green-200 border-yellow-200 border-purple-200 border-pink-200 border-indigo-200 border-gray-200 */
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Design tokens for badges */
+  --badge-radius: 9999px;
+  --badge-padding-x: 0.5rem;
+  --badge-height: 1.5rem;
+  /* Fallback badge colors (can be overridden per-component) */
+  --badge-bg: #f3f4f6;
+  --badge-text: #111827;
+  --badge-border: #e5e7eb;
 }
 
 @theme inline {
@@ -23,4 +34,29 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.text-primary {
+  color: var(--foreground);
+}
+
+.text-body-bold {
+  font-weight: bold;
+}
+
+.text-caption {
+  font-size: 0.875rem;
+  color: #555;
+}
+
+.text-default-font {
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 1rem;
+  color: #222;
+  /* Add any other default styles */
+}
+
+.text-subtext-color {
+  color: #555;
+  font-size:  0.875rem;  
 }
