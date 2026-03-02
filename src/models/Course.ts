@@ -1,21 +1,21 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
 export interface ICourse extends Document {
-  publisher: string;
   title: string;
-  frGrade: string;
-  toGrade: string;
+  grade: string;
   note?: string;
   lessons: Types.ObjectId[];
+  subject: Types.ObjectId;
+  publisher: Types.ObjectId;
 }
 
 const CourseSchema = new Schema<ICourse>({
-  publisher: { type: String, required: true },
   title: { type: String, required: true },
-  frGrade: { type: String, required: true },
-  toGrade: { type: String, required: true },
+  grade: { type: String, required: true },
   note: { type: String },
   lessons: [{ type: Schema.Types.ObjectId, ref: 'Lesson' }],
+  subject: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
+  publisher: { type: Schema.Types.ObjectId, ref: 'Publisher', required: true },
 });
 
 export default model<ICourse>('Course', CourseSchema);

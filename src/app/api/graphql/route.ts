@@ -4,17 +4,19 @@ import type { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
 import Course, { ICourse } from '@/models/Course';
 import Lesson from '@/models/Lesson';
+import Subject from '@/models/Subject';
+import Publisher from '@/models/Publisher';
 
 const typeDefs = `#graphql
   type Course {
     _id: ID!
-    publisher: String!
+    publisher: Publisher!
     title: String!
-    frGrade: String!
-    toGrade: String!
+    grade: String!
     note: String
     lessons: [Lesson!]!
     lessonCount: Int!
+    subject: Subject!
   }
   type Lesson {
     _id: ID!
@@ -22,6 +24,15 @@ const typeDefs = `#graphql
     content: String
     note: String
     order: Int
+  }
+  type Subject {
+    _id: ID!
+    name: String!
+    color: String!
+  }
+  type Publisher {
+    _id: ID!
+    name: String!
   }
   type Query {
     course(id: ID!): Course
@@ -31,7 +42,7 @@ const typeDefs = `#graphql
 const resolvers = {
   Query: {
     course: async (_: unknown, { id }: { id: string }) => {
-      return await Course.findById(id).populate('lessons');
+      return await Course.findById(id).populate('lessons').populate('subject').populate('publisher');
     },
   },
   Course: {
@@ -40,6 +51,12 @@ const resolvers = {
     },
     lessonCount: (parent: ICourse) => {
       return parent.lessons.length;
+    },
+    subject: async (parent: ICourse) => {
+      return await Subject.findById(parent.subject);
+    },
+    publisher: async (parent: ICourse) => {
+      return await Publisher.findById(parent.publisher);
     },
   },
 };
