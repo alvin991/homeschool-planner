@@ -1,9 +1,10 @@
 "use client";
-import CoursesHeader from "./CoursesHeader";
-import CourseCard from "./CourseCard";
+import { useState } from "react";
 import { useQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client';
 import apolloClient from "@/utils/apolloClient";
+import CoursesList from "./CoursesList";
+import CourseDetails from "./CourseDetails";
 
 export type subjectType = {
   _id: number;
@@ -65,24 +66,25 @@ export type CoursesData = {
 
 function CoursesContainer() {
   const { loading, error, data } = useQuery<CoursesData>(GET_COURSES, { client: apolloClient });
+  const [selectedCourse, setSelectedCourse] = useState<CourseType | null>(null);
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error.message}</p>;
   const courses = data?.courses || [];
-  console.log("Fetched courses:", JSON.stringify(courses, null, 2));
+
+  const handleCourseClick = (course: CourseType) => {
+    // Implement navigation to course details page
+    console.log(`Navigate to course details for course ID: ${course._id}`);
+    setSelectedCourse(course);
+  };
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Course List</h1>
-      {/* Course list content will go here */}
-      <CoursesHeader />
-      {/* <CoursesList courses={courses} /> */}
-      { courses && courses.length > 0 && courses.map(course => (
-        <div key={course._id} className="mb-4">
-          <CourseCard course={course} />
-        </div>
-      ))}
-
+      {!selectedCourse ? (
+        <CoursesList courses={courses} handleCourseClick={handleCourseClick} />
+      ) : (
+        <CourseDetails course={selectedCourse} onBack={() => setSelectedCourse(null)} />
+      )}
     </div>
   );
 }
