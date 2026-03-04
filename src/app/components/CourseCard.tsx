@@ -11,7 +11,7 @@ const CourseCard: React.FC<{ course: CourseType }> = ({ course }) => {
             {course.title}
           </div>
           <div className={styles.publisher}>
-            {course.publisher}
+            {course.publisher.name}
           </div>
         </div>
         <div className={styles.lessonInfoContainer}>

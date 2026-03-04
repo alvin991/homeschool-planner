@@ -36,13 +36,17 @@ const typeDefs = `#graphql
   }
   type Query {
     course(id: ID!): Course
+    courses: [Course!]!
   }
 `;
 
 const resolvers = {
   Query: {
     course: async (_: unknown, { id }: { id: string }) => {
-      return await Course.findById(id).populate('lessons').populate('subject').populate('publisher');
+      return await Course.findById(id).lean().populate('lessons').populate('subject').populate('publisher');
+    },
+    courses: async () => {
+      return await Course.find({}).lean().populate('lessons').populate('subject').populate('publisher');
     },
   },
   Course: {

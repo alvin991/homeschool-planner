@@ -1,4 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
+import mongoose from 'mongoose';
 
 export interface ILesson extends Document {
   title: string;
@@ -14,4 +15,6 @@ const LessonSchema = new Schema<ILesson>({
   order: { type: Number },
 });
 
-export default model<ILesson>('Lesson', LessonSchema);
+export default mongoose.models.Lesson
+  ? (mongoose.models.Lesson as unknown as typeof model)
+  : model<ILesson>('Lesson', LessonSchema);
