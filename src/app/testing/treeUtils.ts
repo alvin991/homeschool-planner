@@ -48,40 +48,69 @@ export function findParent(
 export function moveItem(
   items: TreeData,
   draggedId: string,
-  overId: string
+  overId: string,
+  options?: { insertBefore?: boolean }
 ): TreeData {
-  const draggedItem = findItem(items, draggedId);
-  if (!draggedItem) return items;
-
-  // Remove from old location
+  // Deep clone the tree first and operate on the clone so we don't mutate state
   const newItems = JSON.parse(JSON.stringify(items)); // Deep clone
+
+  // Find and remove the dragged item from the cloned tree, capturing the removed subtree
   const draggedParent = findParent(newItems, draggedId);
+  let draggedItemClone: TreeItem | undefined;
+
   if (draggedParent) {
-    draggedParent.parent.children?.splice(draggedParent.index, 1);
+    const removed = draggedParent.parent.children?.splice(draggedParent.index, 1);
+    if (removed && removed.length) draggedItemClone = removed[0];
   } else {
     // Item is at root level
     const index = newItems.findIndex((item: TreeItem) => item.id === draggedId);
-    if (index !== -1) newItems.splice(index, 1);
+    if (index !== -1) {
+      const removed = newItems.splice(index, 1);
+      if (removed && removed.length) draggedItemClone = removed[0];
+    }
   }
 
-  // Find where to insert
+  if (!draggedItemClone) {
+    // nothing found to move
+    return newItems;
+  }
+
+  // Find where to insert the cloned subtree
   const overItem = findItem(newItems, overId);
-  if (overItem?.type === 'folder') {
+  const insertBefore = options?.insertBefore ?? false;
+
+  if (overItem?.type === 'folder' && !insertBefore) {
     // Drop into folder
     if (!overItem.children) overItem.children = [];
-    overItem.children.push(draggedItem);
+    overItem.children.push(draggedItemClone);
   } else {
-    // Drop next to item
+    // Insert BEFORE the over item (highlight line is top of item)
     const overParent = findParent(newItems, overId);
     if (overParent) {
-      const insertIndex = overParent.index + 1;
-      overParent.parent.children?.splice(insertIndex, 0, draggedItem);
+      const insertIndex = overParent.index; // insert before
+      overParent.parent.children?.splice(insertIndex, 0, draggedItemClone);
     } else {
-      // Over item is at root
+      // Over item is at root - insert before root item
       const index = newItems.findIndex((item: TreeItem) => item.id === overId);
-      newItems.splice(index + 1, 0, draggedItem);
+      newItems.splice(index, 0, draggedItemClone);
     }
   }
 
   return newItems;
+}
+
+export function addItemToFolder(
+  items: TreeData,
+  folderId: string,
+  newItem: TreeItem
+): TreeData {
+  const updated = JSON.parse(JSON.stringify(items)); // Deep clone
+  
+  const folder = findItem(updated, folderId);
+  if (folder && folder.type === 'folder') {
+    if (!folder.children) folder.children = [];
+    folder.children.push(newItem);
+  }
+  
+  return updated;
 }
