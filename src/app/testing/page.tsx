@@ -27,6 +27,8 @@ export default function LessonsPage() {
 
   const { activeId, insertBeforeId, handleDragStart, handleDragOver, handleDragEnd } =
     useTreeDrag(lessons, setLessons);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pressedId, setPressedId] = useState<string | null>(null);
 
   const handleAddLesson = () => {
     if (!newTitle.trim()) return;
@@ -60,6 +62,10 @@ export default function LessonsPage() {
   //   setLessons([...lessons, newLesson]);
   // };
 
+  const handleOnSelect = (id: string | null) => {
+    setSelectedId(id);
+  }
+
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
       <h1>📚 My Lessons</h1>
@@ -84,7 +90,14 @@ export default function LessonsPage() {
       
       {/* Tree */}
       <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-        <TreeRenderer items={lessons} insertBeforeId={insertBeforeId} />
+        <TreeRenderer
+          items={lessons}
+          insertBeforeId={insertBeforeId}
+          selectedId={selectedId}
+          onSelect={handleOnSelect}
+          pressedId={pressedId}
+          onPressChange={setPressedId}
+        />
 
         {/* Drag overlay to show dragged item (including children) */}
         <DragOverlay>
