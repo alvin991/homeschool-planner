@@ -105,16 +105,8 @@ export default function LessonsPage() {
             (() => {
               const activeItem = findItem(lessons, activeId);
               if (!activeItem) return null;
-              const overlayStyle: React.CSSProperties = {
-                padding: '8px 12px',
-                background: '#fff',
-                border: '2px solid #3b82f6',
-                boxShadow: '0 6px 18px rgba(59,130,246,0.2)',
-                borderRadius: 6,
-                minWidth: 220,
-                maxWidth: 360,
-                zIndex: 9999,
-              };
+              const overlayClass =
+                'p-2.5 bg-white border-2 border-blue-500 shadow-lg rounded-md min-w-[14rem] max-w-[22.5rem] z-50';
 
               const renderChildren = (item: TreeItem, depth = 0) => {
                 const rowStyle: React.CSSProperties = {
@@ -141,13 +133,13 @@ export default function LessonsPage() {
               const titleIcon = activeItem.type === 'folder' ? '📁' : '📄';
 
               return (
-                <div style={overlayStyle}>
-                  <div style={{ fontWeight: 'bold', marginBottom: 6, display: 'flex', alignItems: 'center' }}>
-                    <span style={{ marginRight: 8 }}>{titleIcon}</span>
+                <div className={overlayClass}>
+                  <div className="flex items-center font-semibold mb-1">
+                    <span className="mr-2">{titleIcon}</span>
                     <span>{activeItem.title}</span>
                   </div>
                   {activeItem.children && activeItem.children.length > 0 && (
-                    <div style={{ maxHeight: 240, overflow: 'auto' }}>
+                    <div className="max-h-60 overflow-auto">
                       {activeItem.children.map(child => renderChildren(child, 1))}
                     </div>
                   )}
