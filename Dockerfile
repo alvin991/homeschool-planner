@@ -1,5 +1,5 @@
 # Install dependencies only when needed
-FROM node:20-alpine AS deps
+FROM node:20 AS deps
 WORKDIR /app
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN \
@@ -9,7 +9,7 @@ RUN \
   else npm install; fi
 
 # Build the app
-FROM node:20-alpine AS builder
+FROM node:20 AS builder
 WORKDIR /app
 COPY . .
 COPY --from=deps /app/node_modules ./node_modules
@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # Production image
-FROM node:20-alpine AS runner
+FROM node:20 AS runner
 WORKDIR /app
 
 # If you use Prisma, uncomment the next line
