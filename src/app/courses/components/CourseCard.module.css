@@ -1,0 +1,61 @@
+.title {
+	font-family: 'Inter', Arial, sans-serif;
+	font-weight: 700;
+	font-size: 1.1rem;
+	color: #222;
+}
+
+.publisher {
+	color: #6b7280;
+	font-size: 0.95rem;
+}
+
+.lessonInfoContainer {
+	margin-top: 0.5rem;
+	font-family: 'Inter', Arial, sans-serif;
+	font-size: 1rem;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+}
+
+.lessonInfoRow {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.subjectBadge {
+	display: flex;
+	height: var(--badge-height, 1.5rem);
+align-items: center;
+border-radius: var(--badge-radius, 9999px);
+padding: 0 var(--badge-padding-x, 0.5rem);
+background: var(--badge-bg, #f3f4f6);
+color: var(--badge-text, #111827);
+border: 1px solid var(--badge-border, #e5e7eb);
+}
+/* Card container styles */
+.card {
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	border-radius: 0.5rem;
+	padding: 1rem;
+	cursor: pointer;
+	border: 1px solid #e5e7eb;
+	transition: background 0.2s;
+}
+.card:hover {
+	background: #f9fafb;
+}
+
+/* Flex column layout */
+.flexCol {
+	display: flex;
+	flex-direction: column;
+}
+
+/* Title styles */
+.title {
+	color: #4b5563;
+}
