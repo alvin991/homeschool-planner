@@ -18,6 +18,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: deps
     container_name: homeschool-planner-app-dev
     volumes:
       - .:/workspace:cached
@@ -29,6 +30,7 @@ services:
       - CHOKIDAR_INTERVAL=1000
     depends_on:
       - db
+    command: sleep infinity
 
 volumes:
   db_data:
