@@ -63,7 +63,7 @@ export default function LessonsPage() {
   // };
 
   const handleOnSelect = (id: string | null) => {
-    setSelectedId(id);
+    setSelectedId((prev) => (prev === id ? null : id));
   }
 
   return (
