@@ -1,4 +1,5 @@
 import type { CourseType } from '../types';
+import CourseForm from './CourseForm';
 import ItemMenu from "./ItemMenu";
 import LessonForm from "./LessonForm";
 
@@ -14,8 +15,9 @@ function CourseDetails({ course, onBack }: CourseDetailsProps) {
       <p>Publisher: {course.publisher.name}</p>
       <p>Grade: {course.grade}</p>
       <p>Subject: {course.subject.name}</p> */}
-      <ItemMenu />
-      <LessonForm course={course} />
+      {/* <ItemMenu /> */}
+      {/* <LessonForm course={course} /> */}
+      <CourseForm course={course} />
       <button onClick={onBack}>Back to Courses</button>
     </div>
   );
