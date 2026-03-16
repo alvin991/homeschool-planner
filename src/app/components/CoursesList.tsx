@@ -1,6 +1,6 @@
 import CoursesHeader from "./CoursesHeader";
 import CourseCard from "./CourseCard";
-import { CourseType } from "./CoursesContainer";
+import type { CourseType } from '@/app/courses/types';
 
 type CoursesListProps = {
   courses: CourseType[];

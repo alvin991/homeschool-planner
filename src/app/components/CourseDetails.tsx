@@ -1,4 +1,4 @@
-import { CourseType } from "./CoursesContainer";
+import type { CourseType } from '@/app/courses/types';
 
 type CourseDetailsProps = {
   course: CourseType;

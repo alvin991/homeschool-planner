@@ -5,34 +5,7 @@ import { gql } from '@apollo/client';
 import apolloClient from "@/utils/apolloClient";
 import CoursesList from "./CoursesList";
 import CourseDetails from "./CourseDetails";
-
-export type subjectType = {
-  _id: number;
-  name: string;
-  color: string;
-};
-
-export type LessonType = {
-  _id: number;
-  title: string;
-  content: string;
-  note: string;
-  order: number;
-};
-
-export type PublisherType = {
-  _id: number;
-  name: string;
-};
-
-export type CourseType = {
-  _id: number;
-  title: string;
-  publisher: PublisherType;
-  grade: string;
-  subject: subjectType;
-  lessons: LessonType[]; // Define a Lesson type as well if needed
-};
+import type { CourseType, CoursesData } from '@/app/courses/types';
 
 const GET_COURSES = gql`
   query GetCourses {
@@ -59,10 +32,6 @@ const GET_COURSES = gql`
     }
   }
 `;
-
-export type CoursesData = {
-  courses: CourseType[];
-};
 
 function CoursesContainer() {
   const { loading, error, data } = useQuery<CoursesData>(GET_COURSES, { client: apolloClient });

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { CourseType } from './components/CoursesContainer';
+import type { CourseType } from './types';
 
 type CoursesUIContextValue = {
   selectedCourse: CourseType | null;

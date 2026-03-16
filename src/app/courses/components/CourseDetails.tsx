@@ -1,6 +1,8 @@
-import { CourseType } from "./CoursesContainer";
+import type { CourseType } from '../types';
+import ItemMenu from "./ItemMenu";
+import LessonForm from "./LessonForm";
 
-type CourseDetailsProps = {
+export type CourseDetailsProps = {
   course: CourseType;
   onBack: () => void;
 };
@@ -8,10 +10,12 @@ type CourseDetailsProps = {
 function CourseDetails({ course, onBack }: CourseDetailsProps) {
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">{course.title}</h2>
+      {/* <h2 className="text-2xl font-bold mb-4">{course.title}</h2>
       <p>Publisher: {course.publisher.name}</p>
       <p>Grade: {course.grade}</p>
-      <p>Subject: {course.subject.name}</p>
+      <p>Subject: {course.subject.name}</p> */}
+      <ItemMenu />
+      <LessonForm course={course} />
       <button onClick={onBack}>Back to Courses</button>
     </div>
   );

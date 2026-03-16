@@ -1,4 +1,4 @@
-import { CourseType } from "./CoursesContainer";
+import type { CourseType } from '@/app/courses/types';
 import styles from "./CourseCard.module.css";
 
 const CourseCard: React.FC<{ course: CourseType }> = ({ course }) => {
