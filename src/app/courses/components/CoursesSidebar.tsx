@@ -1,6 +1,7 @@
 'use client';
 
 import { useCoursesUI } from '../CoursesUIContext';
+import LessonsList from './LessonsList';
 
 export default function CoursesSidebar() {
   const { selectedCourse } = useCoursesUI();
@@ -9,9 +10,11 @@ export default function CoursesSidebar() {
     return <nav>Choose a course to see details</nav>;
   }
 
+  console.log(`selectedCourse ${JSON.stringify(selectedCourse, null, 2)}`)
+
   return (
     <div>
-      <h3 className="text-sm font-semibold mb-2">
+      {/* <h3 className="text-sm font-semibold mb-2">
         {selectedCourse.title}
       </h3>
       <p className="text-xs text-gray-500 mb-3">
@@ -26,7 +29,8 @@ export default function CoursesSidebar() {
             {lesson.order}. {lesson.title}
           </li>
         ))}
-      </ul>
+      </ul> */}
+      <LessonsList key={selectedCourse._id} course={selectedCourse} />
     </div>
   );
 }
