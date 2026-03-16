@@ -2,6 +2,7 @@
 
 import { useCoursesUI } from '../CoursesUIContext';
 import LessonsList from './LessonsList';
+import SidebarHeader from './SidebarHeader';
 
 export default function CoursesSidebar() {
   const { selectedCourse } = useCoursesUI();
@@ -30,6 +31,7 @@ export default function CoursesSidebar() {
           </li>
         ))}
       </ul> */}
+      <SidebarHeader />
       <LessonsList key={selectedCourse._id} course={selectedCourse} />
     </div>
   );

@@ -18,7 +18,7 @@ function CourseDetails({ course, onBack }: CourseDetailsProps) {
       {/* <ItemMenu /> */}
       {/* <LessonForm course={course} /> */}
       <CourseForm course={course} />
-      <button onClick={onBack}>Back to Courses</button>
+      <button className="btn btn-ghost border border-gray-300" onClick={onBack}>Back to Courses</button>
     </div>
   );
 }

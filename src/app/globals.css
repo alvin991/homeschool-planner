@@ -2,6 +2,16 @@
 @import "tailwindcss";
 /* @source inline bg-red-100 bg-blue-100 bg-green-100 bg-yellow-100 bg-purple-100 bg-pink-100 bg-indigo-100 bg-gray-100 text-red-800 text-blue-800 text-green-800 text-yellow-800 text-purple-800 text-pink-800 text-indigo-800 text-gray-800 border-red-200 border-blue-200 border-green-200 border-yellow-200 border-purple-200 border-pink-200 border-indigo-200 border-gray-200 */
 
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm cursor-pointer select-none transition-colors;
+  }
+
+  .btn-ghost {
+    @apply hover:bg-gray-100 active:bg-gray-200;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

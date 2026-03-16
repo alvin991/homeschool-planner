@@ -68,11 +68,9 @@ export default function LessonsList({ course }: LessonsListProps) {
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>📚️ Lessons Tree</h1>
-
-      {/* Add New Item */}
-      <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
+    // <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+    <div className="p-7"> 
+      {/* <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
         <input
           type="text"
           value={newTitle}
@@ -87,7 +85,7 @@ export default function LessonsList({ course }: LessonsListProps) {
         <button onClick={handleAddFolder} style={{ padding: '8px 16px' }}>
           📁 Add Folder
         </button>
-      </div>
+      </div> */}
       
       {/* Tree */}
       <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
@@ -152,10 +150,10 @@ export default function LessonsList({ course }: LessonsListProps) {
       </DndContext>
 
       {/* Debug: Show current tree structure */}
-      <details style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f9f9f9' }}>
+      {/* <details style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f9f9f9' }}>
         <summary>View Tree Structure (Debug)</summary>
         <pre>{JSON.stringify(lessons, null, 2)}</pre>
-      </details>
+      </details> */}
     </div>
   );
 }
