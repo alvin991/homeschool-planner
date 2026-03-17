@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { LessonType } from "../types";
 
 export type LessonFormProps = {
-  lesson: LessonType;
+  lesson: LessonType | null;
 };
 
 export default function LessonForm({ lesson }: LessonFormProps) {
@@ -23,6 +23,7 @@ export default function LessonForm({ lesson }: LessonFormProps) {
         onSubmit={handleSubmit}
         className="w-full max-w-3xl bg-white rounded-lg p-6 space-y-4"
       >
+      <h1 className="text-2xl font-semibold text-gray-800 mb-2">Lesson Info</h1>
       <div>
         <label className="block text-sm font-medium text-gray-700">Title</label>
         <input

@@ -29,3 +29,17 @@ export type CourseType = {
 export type CoursesData = {
   courses: CourseType[];
 };
+
+const FORM_MODES = [
+  'course-list',
+  'course-new',
+  'course-edit',
+  'lesson-new',
+  'lesson-edit',
+] as const;
+
+export type FormModeType = (typeof FORM_MODES)[number];
+
+export function isValidFormMode(value: string): value is FormModeType {
+  return (FORM_MODES as readonly string[]).includes(value);
+}

@@ -5,13 +5,19 @@ import LessonsList from './LessonsList';
 import SidebarHeader from './SidebarHeader';
 
 export default function CoursesSidebar() {
-  const { selectedCourse } = useCoursesUI();
+  const { selectedCourse, setFormMode } = useCoursesUI();
 
   if (!selectedCourse) {
     return <nav>Choose a course to see details</nav>;
   }
 
-  console.log(`selectedCourse ${JSON.stringify(selectedCourse, null, 2)}`)
+  // console.log(`selectedCourse ${JSON.stringify(selectedCourse, null, 2)}`)
+
+  const handleNewLessonClick = () => {
+    // Implement navigation to course details page
+    setFormMode('lesson-new')
+    console.log(`lesson-new`);
+  };
 
   return (
     <div>
@@ -31,7 +37,7 @@ export default function CoursesSidebar() {
           </li>
         ))}
       </ul> */}
-      <SidebarHeader />
+      <SidebarHeader onClick={handleNewLessonClick}/>
       <LessonsList key={selectedCourse._id} course={selectedCourse} />
     </div>
   );

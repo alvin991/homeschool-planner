@@ -1,6 +1,7 @@
 import CoursesHeader from "./CoursesHeader";
 import CourseCard from "./CourseCard";
 import type { CourseType } from '../types';
+import { useCoursesUI } from '../CoursesUIContext';
 
 type CoursesListProps = {
   courses: CourseType[];
@@ -8,6 +9,7 @@ type CoursesListProps = {
 };
 
 function CoursesList({ courses, handleCourseClick }: CoursesListProps) {
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">Course List</h1>

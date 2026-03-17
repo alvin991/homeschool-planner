@@ -38,7 +38,7 @@ function CoursesContainer() {
   const { loading, error, data } = useQuery<CoursesData>(GET_COURSES, {
     client: apolloClient,
   });
-  const { selectedCourse, setSelectedCourse } = useCoursesUI();
+  const { selectedCourse, setSelectedCourse, setFormMode } = useCoursesUI();
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error.message}</p>;
@@ -46,7 +46,15 @@ function CoursesContainer() {
 
   const handleCourseClick = (course: CourseType) => {
     setSelectedCourse(course);
+    setFormMode('course-edit')
+    console.log(`course-edit`)
   };
+
+  const handleBackToCoursesClick = () => {
+    setSelectedCourse(null)
+    setFormMode('course-list')
+    console.log(`course-list`)
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -54,7 +62,7 @@ function CoursesContainer() {
         {!selectedCourse ? (
           <CoursesList courses={courses} handleCourseClick={handleCourseClick} />
         ) : (
-          <CourseDetails course={selectedCourse} onBack={() => setSelectedCourse(null)} />
+          <CourseDetails course={selectedCourse} lesson={null} onBack={handleBackToCoursesClick} />
         )}
       </div>
     </div>

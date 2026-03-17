@@ -1,24 +1,29 @@
-import type { CourseType } from '../types';
+import type { CourseType, LessonType } from '../types';
 import CourseForm from './CourseForm';
-import ItemMenu from "./ItemMenu";
-import LessonForm from "./LessonForm";
+import ItemMenu from './ItemMenu';
+import LessonForm from './LessonForm';
+import { useCoursesUI } from '../CoursesUIContext';
 
 export type CourseDetailsProps = {
   course: CourseType;
+  lesson: LessonType | null;
   onBack: () => void;
 };
 
-function CourseDetails({ course, onBack }: CourseDetailsProps) {
+function CourseDetails({ course, lesson, onBack }: CourseDetailsProps) {
+  const { formMode } = useCoursesUI();
+
   return (
     <div>
-      {/* <h2 className="text-2xl font-bold mb-4">{course.title}</h2>
-      <p>Publisher: {course.publisher.name}</p>
-      <p>Grade: {course.grade}</p>
-      <p>Subject: {course.subject.name}</p> */}
       {/* <ItemMenu /> */}
-      {/* <LessonForm course={course} /> */}
-      <CourseForm course={course} />
-      <button className="btn btn-ghost border border-gray-300" onClick={onBack}>Back to Courses</button>
+      {formMode === 'course-edit' ? (
+        <CourseForm course={course} />
+      ) : (
+        <LessonForm lesson={lesson} />
+      )}
+      <button className="btn btn-ghost border border-gray-300" onClick={onBack}>
+        Back to Courses
+      </button>
     </div>
   );
 }

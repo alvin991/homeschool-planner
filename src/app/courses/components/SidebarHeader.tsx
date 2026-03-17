@@ -1,4 +1,8 @@
-export default function SidebarHeader() {
+type SidebarHeaderProps = {
+    onClick: () => void;
+}
+
+export default function SidebarHeader({ onClick }: SidebarHeaderProps) {
   return (
     // <div className="flex align-center" style={{ padding: '20px', fontFamily: 'sans-serif' }}>
     <div className="flex justify-between items-center border-b border-gray-300 gap-2 pb-4">
@@ -14,7 +18,9 @@ export default function SidebarHeader() {
         //   borderRadius: '4px',
         // }}
       >
-        <button className="btn btn-ghost border border-gray-300 bg-white active:scale-[0.98]">
+        <button 
+            className="btn btn-ghost border border-gray-300 bg-white active:scale-[0.98]"
+            onClick={onClick}>
           ➕ Add Lesson
         </button>
       </div>
