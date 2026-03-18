@@ -5,7 +5,7 @@ import LessonsList from './LessonsList';
 import SidebarHeader from './SidebarHeader';
 
 export default function CoursesSidebar() {
-  const { selectedCourse, formMode, setFormMode } = useCoursesUI();
+  const { selectedCourse, formMode, setFormMode, triggerLessonCreate } = useCoursesUI();
 
   if (!selectedCourse) {
     return <nav>Choose a course to see details</nav>;
@@ -18,6 +18,7 @@ export default function CoursesSidebar() {
   const handleNewLessonClick = () => {
     // Implement navigation to course details page
     setFormMode('lesson-new');
+    triggerLessonCreate(selectedCourse._id);
     console.log(`lesson-new`);
   };
 

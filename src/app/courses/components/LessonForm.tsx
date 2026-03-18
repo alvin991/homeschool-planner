@@ -11,18 +11,17 @@ export default function LessonForm({ lesson }: LessonFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
-  const { setFormMode } = useCoursesUI();
+  const { cancelDraftLesson, commitDraftLesson } = useCoursesUI();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Replace with real submit logic
     // console.log({ lesson.lesson.title, lesson:content });
-    setFormMode('course-edit')
+    commitDraftLesson();
   };
 
-  const handleCancel = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormMode('course-edit')
+  const handleCancel = () => {
+    cancelDraftLesson();
   };
 
   return (
@@ -32,7 +31,7 @@ export default function LessonForm({ lesson }: LessonFormProps) {
         className="w-full max-w-3xl bg-white rounded-lg p-6 space-y-4"
       >
         <h1 className="text-2xl font-semibold text-gray-800 mb-2">
-          Lesson Info
+          {lesson ? 'Edit Lesson' : 'New Lesson'}
         </h1>
         <div>
           <label className="block text-sm font-medium text-gray-700">

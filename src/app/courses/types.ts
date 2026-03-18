@@ -1,11 +1,11 @@
 export type SubjectType = {
-  _id: number;
+  _id: string;
   name: string;
   color: string;
 };
 
 export type LessonType = {
-  _id: number;
+  _id: string;
   title: string;
   content: string;
   note: string;
@@ -13,12 +13,12 @@ export type LessonType = {
 };
 
 export type PublisherType = {
-  _id: number;
+  _id: string;
   name: string;
 };
 
 export type CourseType = {
-  _id: number;
+  _id: string;
   title: string;
   publisher: PublisherType;
   grade: string;
