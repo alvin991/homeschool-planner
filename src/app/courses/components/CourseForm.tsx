@@ -1,28 +1,28 @@
 "use client";
-import { useState } from "react";
-import type { CourseType } from "../types";
+
+import type { CourseType } from '../types';
+import { useCourseForm } from '../hooks/useCourseForm';
 
 export type CourseFormProps = {
   course?: CourseType | null;
 };
 
 export default function CourseForm({ course }: CourseFormProps) {
-  const [title, setTitle] = useState(course?.title ?? "");
-  const [publisherName, setPublisherName] = useState(course?.publisher?.name ?? "");
-  const [grade, setGrade] = useState(course?.grade ?? "");
-  const [subjectName, setSubjectName] = useState(course?.subject?.name ?? "");
-  const [subjectColor, setSubjectColor] = useState(course?.subject?.color ?? "");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Replace with real submit logic
-    console.log({
-      title,
-      publisher: { name: publisherName },
-      grade,
-      subject: { name: subjectName, color: subjectColor },
-    });
-  };
+  const {
+    title,
+    setTitle,
+    publisherName,
+    setPublisherName,
+    grade,
+    setGrade,
+    subjectName,
+    subjectColor,
+    setSubjectColor,
+    metaData,
+    handleSubjectSelect,
+    handleSubmit,
+    handleCancel,
+  } = useCourseForm(course);
 
   return (
     <div className="flex justify-center h-full p-6">
@@ -44,12 +44,18 @@ export default function CourseForm({ course }: CourseFormProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Publisher</label>
-          <input
+          <select
             value={publisherName}
             onChange={(e) => setPublisherName(e.target.value)}
-            placeholder="Publisher name"
-            className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          />
+            className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            <option value="">Select publisher</option>
+            {metaData?.publishers.map((p) => (
+              <option key={p._id} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+          </select>
           <p className="mt-1 text-xs text-gray-400">Publisher or provider of the course</p>
         </div>
 
@@ -66,12 +72,18 @@ export default function CourseForm({ course }: CourseFormProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Subject</label>
-          <input
+          <select
             value={subjectName}
-            onChange={(e) => setSubjectName(e.target.value)}
-            placeholder="e.g. Math, Science"
-            className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          />
+            onChange={(e) => handleSubjectSelect(e.target.value)}
+            className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            <option value="">Select subject</option>
+            {metaData?.subjects.map((s) => (
+              <option key={s._id} value={s.name}>
+                {s.name}
+              </option>
+            ))}
+          </select>
           <p className="mt-1 text-xs text-gray-400">Subject or discipline</p>
         </div>
 
@@ -87,10 +99,18 @@ export default function CourseForm({ course }: CourseFormProps) {
           <p className="mt-1 text-xs text-gray-400">Color for the subject (hex or name)</p>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2 pt-4">
           <button
-            type="submit"
-            className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none"
+            type="button"
+            className="btn btn-ghost border border-gray-300"
+            onClick={handleCancel}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost border border-gray-300"
+            onClick={handleSubmit}
           >
             Save
           </button>

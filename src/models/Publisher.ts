@@ -1,4 +1,4 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, type Model } from 'mongoose';
 import mongoose from 'mongoose';
 
 export interface IPublisher extends Document {
@@ -9,6 +9,8 @@ const PublisherSchema = new Schema<IPublisher>({
   name: { type: String, required: true },
 });
 
-export default mongoose.models.Publisher
-  ? (mongoose.models.Publisher as unknown as typeof model)
-  : model<IPublisher>('Publisher', PublisherSchema);
+const PublisherModel =
+  (mongoose.models.Publisher as Model<IPublisher> | undefined) ??
+  model<IPublisher>('Publisher', PublisherSchema);
+
+export default PublisherModel;

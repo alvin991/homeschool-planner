@@ -1,43 +1,13 @@
 'use client';
 
-import { useQuery } from '@apollo/client/react';
-import { gql } from '@apollo/client';
-import apolloClient from '@/utils/apolloClient';
 import CoursesList from './CoursesList';
 import CourseDetails from './CourseDetails';
 import { useCoursesUI } from '../CoursesUIContext';
-import type { CourseType, CoursesData } from '../types';
-
-const GET_COURSES = gql`
-  query GetCourses {
-    courses {
-      _id
-      title
-      grade
-      publisher {
-        _id
-        name
-      }
-      subject {
-        _id
-        name
-        color
-      }
-      lessons {
-        _id
-        title
-        content
-        note
-        order
-      }
-    }
-  }
-`;
+import type { CourseType } from '../types';
+import { useCoursesQuery } from '../hooks/useCoursesQuery';
 
 function CoursesContainer() {
-  const { loading, error, data } = useQuery<CoursesData>(GET_COURSES, {
-    client: apolloClient,
-  });
+  const { loading, error, data } = useCoursesQuery();
   const { selectedCourse, setSelectedCourse, setFormMode } = useCoursesUI();
 
   if (loading) return <p>Loading...</p>;
@@ -46,15 +16,15 @@ function CoursesContainer() {
 
   const handleCourseClick = (course: CourseType) => {
     setSelectedCourse(course);
-    setFormMode('course-edit')
-    console.log(`course-edit`)
+    setFormMode('course-edit');
+    console.log(`course-edit`);
   };
 
   const handleBackToCoursesClick = () => {
-    setSelectedCourse(null)
-    setFormMode('course-list')
-    console.log(`course-list`)
-  }
+    setSelectedCourse(null);
+    setFormMode('course-list');
+    console.log(`course-list`);
+  };
 
   return (
     <div className="flex h-full flex-col">

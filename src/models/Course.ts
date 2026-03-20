@@ -1,4 +1,4 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, model, Document, Types, type Model } from 'mongoose';
 import mongoose from 'mongoose';
 
 export interface ICourse extends Document {
@@ -19,6 +19,8 @@ const CourseSchema = new Schema<ICourse>({
   publisher: { type: Schema.Types.ObjectId, ref: 'Publisher', required: true },
 });
 
-export default mongoose.models.Course
-  ? (mongoose.models.Course as unknown as typeof model)
-  : model<ICourse>('Course', CourseSchema);
+const CourseModel =
+  (mongoose.models.Course as Model<ICourse> | undefined) ??
+  model<ICourse>('Course', CourseSchema);
+
+export default CourseModel;

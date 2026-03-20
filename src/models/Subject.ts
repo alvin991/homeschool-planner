@@ -1,4 +1,4 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, type Model } from 'mongoose';
 import mongoose from 'mongoose';
 
 export interface ISubject extends Document {
@@ -11,6 +11,8 @@ const SubjectSchema = new Schema<ISubject>({
   color: { type: String, required: true },
 });
 
-export default mongoose.models.Subject
-  ? (mongoose.models.Subject as unknown as typeof model)
-  : model<ISubject>('Subject', SubjectSchema);
+const SubjectModel =
+  (mongoose.models.Subject as Model<ISubject> | undefined) ??
+  model<ISubject>('Subject', SubjectSchema);
+
+export default SubjectModel;
