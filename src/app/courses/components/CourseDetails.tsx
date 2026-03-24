@@ -1,4 +1,5 @@
-import type { CourseType, LessonType } from '../types';
+import { useMemo } from 'react';
+import type { CourseType } from '../types';
 import CourseForm from './CourseForm';
 import ItemMenu from './ItemMenu';
 import LessonForm from './LessonForm';
@@ -6,20 +7,34 @@ import { useCoursesUI } from '../CoursesUIContext';
 
 export type CourseDetailsProps = {
   course: CourseType;
-  lesson: LessonType | null;
   onBack: () => void;
 };
 
-function CourseDetails({ course, lesson, onBack }: CourseDetailsProps) {
-  const { formMode } = useCoursesUI();
+function CourseDetails({ course, onBack }: CourseDetailsProps) {
+  const { formMode, selectedLessonTreeId } = useCoursesUI();
+
+  const lessonForForm = useMemo(() => {
+    if (formMode === 'lesson-new') return null;
+    if (!selectedLessonTreeId) return null;
+    return (
+      course.lessons.find((l) => String(l._id) === selectedLessonTreeId) ?? null
+    );
+  }, [course.lessons, formMode, selectedLessonTreeId]);
+
+  const showLessonForm = formMode === 'lesson-new' || formMode === 'lesson-edit';
 
   return (
     <div>
-      {/* <ItemMenu /> */}
-      {formMode === 'course-edit' ? (
+      {!showLessonForm ? (
         <CourseForm course={course} />
       ) : (
-        <LessonForm lesson={lesson} />
+        <>
+          <ItemMenu />
+          <LessonForm
+            key={`${formMode}-${lessonForForm?._id ?? selectedLessonTreeId ?? 'none'}`}
+            lesson={lessonForForm}
+          />
+        </>
       )}
       <button className="btn btn-ghost border border-gray-300" onClick={onBack}>
         Back to Courses

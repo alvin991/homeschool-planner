@@ -8,9 +8,9 @@ export type LessonFormProps = {
 };
 
 export default function LessonForm({ lesson }: LessonFormProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [content, setContent] = useState('');
+  const [title, setTitle] = useState(() => lesson?.title ?? '');
+  const [description, setDescription] = useState(() => lesson?.note ?? '');
+  const [content, setContent] = useState(() => lesson?.content ?? '');
   const { cancelDraftLesson, commitDraftLesson } = useCoursesUI();
 
   const handleSubmit = (e: React.FormEvent) => {

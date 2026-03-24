@@ -11,6 +11,9 @@ type PendingLessonCreate = {
 type CoursesUIContextValue = {
   selectedCourse: CourseType | null;
   setSelectedCourse: (course: CourseType | null) => void;
+  /** Tree item id (`String(lesson._id)` or temp `lesson-…`) when a lesson row is selected; drives right-panel LessonForm. */
+  selectedLessonTreeId: string | null;
+  setSelectedLessonTreeId: (id: string | null) => void;
   formMode: FormModeType;
   setFormMode: (formMode: FormModeType) => void;
   triggerLessonCreate: (courseId: CourseType['_id']) => void;
@@ -29,6 +32,7 @@ const CoursesUIContext = createContext<CoursesUIContextValue | undefined>(
 
 export function CoursesUIProvider({ children }: { children: ReactNode }) {
   const [selectedCourse, setSelectedCourse] = useState<CourseType | null>(null);
+  const [selectedLessonTreeId, setSelectedLessonTreeId] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<FormModeType>('course-list');
   const [pendingLessonCreate, setPendingLessonCreate] = useState<PendingLessonCreate | null>(null);
   const [draftLessonId, setDraftLessonId] = useState<string | null>(null);
@@ -45,12 +49,14 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
       setDraftLessonCancelRequestId((n) => n + 1);
     }
     setDraftLessonId(null);
+    setSelectedLessonTreeId(null);
     setFormMode('course-edit');
   };
 
   const commitDraftLesson = () => {
     setDraftLessonId(null);
     setDraftLessonCancelId(null);
+    setSelectedLessonTreeId(null);
     setFormMode('course-edit');
   };
 
@@ -59,6 +65,8 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
       value={{
         selectedCourse,
         setSelectedCourse,
+        selectedLessonTreeId,
+        setSelectedLessonTreeId,
         formMode,
         setFormMode,
         triggerLessonCreate,

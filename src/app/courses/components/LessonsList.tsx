@@ -28,6 +28,8 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     draftLessonCancelRequestId,
     draftLessonCancelId,
     pendingLessonCreate,
+    setFormMode,
+    setSelectedLessonTreeId,
   } = useCoursesUI();
   const [lessons, setLessons] = useState<TreeData>(() =>
     courseLessonsToTreeData(course.lessons)
@@ -87,8 +89,25 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
   // };
 
   const handleOnSelect = (id: string | null) => {
-    setSelectedId((prev) => (prev === id ? null : id));
-  }
+    // Compute next selection first; never call context setters inside setSelectedId's updater —
+    // that runs during React's state update and triggers "Cannot update Provider while rendering".
+    const next = id === null ? null : selectedId === id ? null : id;
+    setSelectedId(next);
+
+    if (next === null) {
+      setSelectedLessonTreeId(null);
+      setFormMode('course-edit');
+    } else {
+      const item = findItem(lessons, next);
+      if (item?.type === 'lesson') {
+        setSelectedLessonTreeId(next);
+        setFormMode('lesson-edit');
+      } else {
+        setSelectedLessonTreeId(null);
+        setFormMode('course-edit');
+      }
+    }
+  };
 
   return (
     // <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
