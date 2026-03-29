@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useRef } from 'react';
+import { SortableContext } from '@dnd-kit/sortable';
 import { TreeData } from './types';
 import { TreeItemComponent } from './TreeItemComponent';
 import { flattenTree } from './treeUtils';
@@ -17,33 +17,29 @@ interface TreeRendererProps {
 }
 
 export function TreeRenderer({ items, depth = 0, insertBeforeId, selectedId, onSelect, pressedId, onPressChange }: TreeRendererProps) {
-  // Get all IDs for SortableContext (including nested items)
   const ids = flattenTree(items).map(item => item.id);
-
-  // Track pointer-down state to distinguish clicks from drags
   const pointerRef = useRef<{ id?: string; x: number; y: number; moved: boolean } | null>(null);
-
-  const THRESHOLD = 6; // pixels
+  const THRESHOLD = 6;
 
   return (
-    <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+    <SortableContext items={ids} strategy={() => null}>
       {items.map(item => (
         <div
           key={item.id}
           data-id={item.id}
           onPointerDown={(e) => {
-            // Only let the nearest wrapper (the actual item clicked) handle the event.
             const nearest = (e.target as Element).closest('[data-id]');
             if (nearest && nearest !== e.currentTarget) return;
             e.stopPropagation();
-            console.log('Pointer down on item:', item.id, 'at', e.clientX, e.clientY);
+          
+            // if the click started on the drag handle, don't track it for selection
+            const onHandle = (e.target as Element).closest('[data-drag-handle]');
+            if (onHandle) return;
+          
             pointerRef.current = { id: item.id, x: e.clientX, y: e.clientY, moved: false };
             onPressChange?.(item.id);
-            // Immediately select this item on pointer down to unselect others
-            onSelect?.(item.id);
           }}
           onPointerMove={(e) => {
-            // Only handle move for the nearest wrapper
             const nearest = (e.target as Element).closest('[data-id]');
             if (nearest && nearest !== e.currentTarget) return;
             e.stopPropagation();
@@ -55,14 +51,13 @@ export function TreeRenderer({ items, depth = 0, insertBeforeId, selectedId, onS
             }
           }}
           onPointerUp={(e) => {
-            // Only handle up for the nearest wrapper
             const nearest = (e.target as Element).closest('[data-id]');
             if (nearest && nearest !== e.currentTarget) return;
             e.stopPropagation();
-            console.log('Pointer up on item:', item.id, 'at', e.clientX, e.clientY);
             const p = pointerRef.current;
             if (p && p.id === item.id && !p.moved) {
-              onSelect?.(item.id);
+              // toggle: click selected item to deselect, click unselected item to select
+              onSelect?.(selectedId === item.id ? null : item.id);
             }
             pointerRef.current = null;
             onPressChange?.(null);
@@ -80,7 +75,6 @@ export function TreeRenderer({ items, depth = 0, insertBeforeId, selectedId, onS
             pressed={pressedId === item.id}
           />
 
-          {/* Recursively render children if it's a folder */}
           {item.type === 'folder' && item.children && item.children.length > 0 && (
             <TreeRenderer
               items={item.children}
@@ -88,6 +82,8 @@ export function TreeRenderer({ items, depth = 0, insertBeforeId, selectedId, onS
               insertBeforeId={insertBeforeId}
               selectedId={selectedId}
               onSelect={onSelect}
+              pressedId={pressedId}       // fixed: was missing in recursive call
+              onPressChange={onPressChange} // fixed: was missing in recursive call
             />
           )}
         </div>

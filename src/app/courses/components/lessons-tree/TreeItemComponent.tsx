@@ -14,10 +14,17 @@ interface TreeItemComponentProps {
   pressed?: boolean;
 }
 
-export function TreeItemComponent({ item, depth, showInsertBefore, selected, pressed }: TreeItemComponentProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
-    id: item.id,
-  });
+export function TreeItemComponent({
+  item,
+  depth,
+  showInsertBefore,
+  selected,
+  pressed,
+}: TreeItemComponentProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useSortable({
+      id: item.id,
+    });
   const { active, over } = useDndContext();
 
   // Highlight potential drop targets
@@ -35,7 +42,9 @@ export function TreeItemComponent({ item, depth, showInsertBefore, selected, pre
   }
 
   // Only apply the transform for the actively dragged item so siblings don't shift
-  const transformString = isDragging ? CSS.Transform.toString(transform) : undefined;
+  const transformString = isDragging
+    ? CSS.Transform.toString(transform)
+    : undefined;
 
   // Keep transform and marginLeft inline (depth and dnd-kit transform are dynamic).
   const baseClass =
@@ -57,16 +66,18 @@ export function TreeItemComponent({ item, depth, showInsertBefore, selected, pre
     <div style={{ position: 'relative' }}>
       {/* Highlight line only for non-folder items; folders get an overlap style */}
       {showHighlight && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '4px',
-          background: 'dodgerblue',
-          borderRadius: '4px 4px 0 0',
-          zIndex: 3,
-        }} />
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '4px',
+            background: 'dodgerblue',
+            borderRadius: '4px 4px 0 0',
+            zIndex: 3,
+          }}
+        />
       )}
       <div
         ref={setNodeRef}
@@ -75,10 +86,25 @@ export function TreeItemComponent({ item, depth, showInsertBefore, selected, pre
           (isOverFolder ? ' bg-blue-50 shadow-inner' : '') +
           (pressed ? ` ${pressedClass}` : selected ? ` ${selectedClass}` : '')
         }
-        style={{ ...(transformString ? { transform: transformString } : {}), marginLeft: `${depth * 1.5}rem`, opacity: isDragging ? 0.5 : 1 }}
+        style={{
+          marginLeft: `${depth * 1.5}rem`,
+          opacity: isDragging ? 0.5 : 1,
+        }}
         {...attributes}
-        {...listeners}
       >
+        {/* Drag handle */}
+        <div
+          {...listeners}
+          data-drag-handle="true"
+          style={{
+            cursor: 'grab',
+            padding: '0 8px',
+            display: 'inline-flex',
+            alignItems: 'center',
+          }}
+        >
+          ⠿
+        </div>
         <span style={{ marginRight: '8px' }}>
           {item.type === 'folder' ? '📁' : '📄'}
         </span>
