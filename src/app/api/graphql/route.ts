@@ -3,6 +3,7 @@ import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import type { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
 import Course, { ICourse } from '@/models/Course';
+import '@/models/Lesson';
 import Subject from '@/models/Subject';
 import Publisher from '@/models/Publisher';
 
