@@ -1,23 +1,81 @@
 'use client';
-import React, { useState } from 'react';
-import type { LessonType } from '../types';
+import { useState } from 'react';
+import { useMutation } from '@apollo/client/react';
+import apolloClient from '@/utils/apolloClient';
+import type { CourseType, LessonType } from '../types';
+import { GET_COURSES, UPDATE_COURSE_LESSON_TREE } from '../api/course.graphql';
+import { apiTreeToTreeData, treeDataToLessonTreeJson } from '../courseTree';
 import { useCoursesUI } from '../CoursesUIContext';
 
 export type LessonFormProps = {
+  course: CourseType;
   lesson: LessonType | null;
 };
 
-export default function LessonForm({ lesson }: LessonFormProps) {
+export default function LessonForm({ course, lesson }: LessonFormProps) {
   const [title, setTitle] = useState(() => lesson?.title ?? '');
   const [description, setDescription] = useState(() => lesson?.note ?? '');
   const [content, setContent] = useState(() => lesson?.content ?? '');
-  const { cancelDraftLesson, commitDraftLesson } = useCoursesUI();
+  const {
+    cancelDraftLesson,
+    commitDraftLesson,
+    formMode,
+    selectedLessonTreeId,
+    lessonTreeUi,
+  } = useCoursesUI();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [updateCourseLessonTree, { loading }] = useMutation(UPDATE_COURSE_LESSON_TREE, {
+    client: apolloClient,
+    refetchQueries: [{ query: GET_COURSES }],
+    awaitRefetchQueries: true,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Replace with real submit logic
-    // console.log({ lesson.lesson.title, lesson:content });
-    commitDraftLesson();
+    if (!title.trim()) {
+      console.warn('Title is required');
+      return;
+    }
+
+    const tree = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
+
+    try {
+      if (formMode === 'lesson-edit' && lesson) {
+        const overrides = {
+          [String(lesson._id)]: {
+            title: title.trim(),
+            content,
+            note: description,
+          },
+        };
+        await updateCourseLessonTree({
+          variables: {
+            id: course._id,
+            lessonTree: treeDataToLessonTreeJson(tree, course, overrides),
+          },
+        });
+      } else if (formMode === 'lesson-new' && selectedLessonTreeId) {
+        const overrides = {
+          [selectedLessonTreeId]: {
+            title: title.trim(),
+            content,
+            note: description,
+          },
+        };
+        await updateCourseLessonTree({
+          variables: {
+            id: course._id,
+            lessonTree: treeDataToLessonTreeJson(tree, course, overrides),
+          },
+        });
+      } else {
+        console.warn('Cannot save lesson: missing selection');
+        return;
+      }
+      commitDraftLesson();
+    } catch (err) {
+      console.error('Failed to save lesson', err);
+    }
   };
 
   const handleCancel = () => {
@@ -89,18 +147,12 @@ export default function LessonForm({ lesson }: LessonFormProps) {
             Cancel
           </button>
           <button
-            type="button"
-            className="btn btn-ghost border border-gray-300"
-            onClick={handleSubmit}
+            type="submit"
+            disabled={loading}
+            className="btn btn-ghost border border-gray-300 disabled:opacity-50"
           >
-            Save
+            {loading ? 'Saving…' : 'Save'}
           </button>
-          {/* <button
-          type="submit"
-          className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none"
-        >
-          Save
-        </button> */}
         </div>
       </form>
     </div>

@@ -1,12 +1,18 @@
-import { useState } from 'react';
-import { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import { useEffect, useRef, useState } from 'react';
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
 import { TreeData } from './types';
 import { moveItem, findItem } from './treeUtils';
 
 export function useTreeDrag(
   lessons: TreeData,
-  setLessons: (updater: TreeData | ((prev: TreeData) => TreeData)) => void
+  setLessons: (updater: TreeData | ((prev: TreeData) => TreeData)) => void,
+  onDragEndComplete?: (nextTree: TreeData) => void,
 ) {
+  const onDragEndCompleteRef = useRef(onDragEndComplete);
+  useEffect(() => {
+    onDragEndCompleteRef.current = onDragEndComplete;
+  }, [onDragEndComplete]);
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [insertBeforeId, setInsertBeforeId] = useState<string | null>(null);
 
@@ -28,9 +34,7 @@ export function useTreeDrag(
       const targetId = insertBeforeId ?? String(over.id);
       const insertBefore = Boolean(insertBeforeId);
       const updated = moveItem(prev, String(active.id), targetId, { insertBefore });
-      console.log('DragEnd - moved', String(active.id), 'over', String(over.id));
-      console.log('prev tree:', JSON.stringify(prev, null, 2));
-      console.log('updated tree:', JSON.stringify(updated, null, 2));
+      queueMicrotask(() => onDragEndCompleteRef.current?.(updated));
       return updated;
     });
   };
@@ -40,7 +44,9 @@ export function useTreeDrag(
     setActiveId(String(active.id));
   };
 
-  const handleDragOver = (event: any) => {
+  const handleDragOver = (
+    event: DragOverEvent & { pointerCoordinates?: { y: number } | null },
+  ) => {
     const { over } = event;
 
     if (!over) {
@@ -56,7 +62,10 @@ export function useTreeDrag(
     }
 
     // Prefer the current pointer coordinates (live position) over the initial activatorEvent
-    const clientY = event.pointerCoordinates?.y ?? event.activatorEvent?.clientY ?? null;
+    const activator = event.activatorEvent;
+    const clientY =
+      event.pointerCoordinates?.y ??
+      (activator instanceof MouseEvent ? activator.clientY : null);
 
     // If target is a folder, only show insert-before when pointer is strictly inside
     // the folder rect and past the 50% vertical threshold. This avoids spurious

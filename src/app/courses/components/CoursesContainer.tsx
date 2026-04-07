@@ -1,19 +1,27 @@
 'use client';
 
+import { useMemo } from 'react';
 import CoursesList from './CoursesList';
 import CourseDetails from './CourseDetails';
 import { useCoursesUI } from '../CoursesUIContext';
 import type { CourseType } from '../types';
 import { useCoursesQuery } from '../hooks/useCoursesQuery';
 
+const EMPTY_COURSES: CourseType[] = [];
+
 function CoursesContainer() {
   const { loading, error, data } = useCoursesQuery();
   const { selectedCourse, setSelectedCourse, setFormMode, setSelectedLessonTreeId } =
     useCoursesUI();
+  const courses = data?.courses ?? EMPTY_COURSES;
+
+  const courseForDetails = useMemo(() => {
+    if (!selectedCourse) return null;
+    return courses.find((c) => c._id === selectedCourse._id) ?? selectedCourse;
+  }, [courses, selectedCourse]);
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error.message}</p>;
-  const courses = data?.courses || [];
 
   const handleCourseClick = (course: CourseType) => {
     setSelectedLessonTreeId(null);
@@ -35,7 +43,7 @@ function CoursesContainer() {
         {!selectedCourse ? (
           <CoursesList courses={courses} handleCourseClick={handleCourseClick} />
         ) : (
-          <CourseDetails course={selectedCourse} onBack={handleBackToCoursesClick} />
+          <CourseDetails course={courseForDetails!} onBack={handleBackToCoursesClick} />
         )}
       </div>
     </div>

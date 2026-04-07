@@ -1,13 +1,27 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useCoursesUI } from '../CoursesUIContext';
+import { useCoursesQuery } from '../hooks/useCoursesQuery';
 import LessonsList from './LessonsList';
 import SidebarHeader from './SidebarHeader';
 
 export default function CoursesSidebar() {
+  const { data } = useCoursesQuery();
   const { selectedCourse, formMode, setFormMode, triggerLessonCreate } = useCoursesUI();
 
-  if (!selectedCourse) {
+  const courseForSidebar = useMemo(() => {
+    if (!selectedCourse) return null;
+    const courses = data?.courses ?? [];
+    return courses.find((c) => c._id === selectedCourse._id) ?? selectedCourse;
+  }, [data?.courses, selectedCourse]);
+
+  const lessonsListKey = useMemo(() => {
+    if (!courseForSidebar) return '';
+    return JSON.stringify(courseForSidebar.lessonTree ?? []);
+  }, [courseForSidebar]);
+
+  if (!selectedCourse || !courseForSidebar) {
     return <nav>Choose a course to see details</nav>;
   }
 
@@ -18,30 +32,23 @@ export default function CoursesSidebar() {
   const handleNewLessonClick = () => {
     // Implement navigation to course details page
     setFormMode('lesson-new');
-    triggerLessonCreate(selectedCourse._id);
+    triggerLessonCreate(courseForSidebar._id);
     console.log(`lesson-new`);
+  };
+
+  const handleNewFolderClick = () => {
+    setFormMode('folder-new');
+    // triggerFolderCreate(selectedCourse._id);
+    console.log(`folder-new`);
   };
 
   return (
     <div>
-      {/* <h3 className="text-sm font-semibold mb-2">
-        {selectedCourse.title}
-      </h3>
-      <p className="text-xs text-gray-500 mb-3">
-        {selectedCourse.publisher.name} · Grade {selectedCourse.grade}
-      </p>
-      <h4 className="text-xs font-semibold text-gray-600 mb-1">
-        Lessons
-      </h4>
-      <ul className="text-xs text-gray-700 space-y-1 max-h-64 overflow-auto pr-1">
-        {selectedCourse.lessons.map((lesson) => (
-          <li key={lesson._id} className="truncate">
-            {lesson.order}. {lesson.title}
-          </li>
-        ))}
-      </ul> */}
-      <SidebarHeader onClick={handleNewLessonClick} />
-      <LessonsList key={selectedCourse._id} course={selectedCourse} />
+      <SidebarHeader onClickAddLesson={handleNewLessonClick} onClickAddFolder={handleNewFolderClick}/>
+      <LessonsList
+        key={`${courseForSidebar._id}-${lessonsListKey}`}
+        course={courseForSidebar}
+      />
 
       {/* Overlay: blocks interactions and shows not-allowed cursor */}
       {isLocked && (

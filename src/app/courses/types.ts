@@ -12,6 +12,17 @@ export type LessonType = {
   order: number;
 };
 
+/** One node in `Course.lessonTree` (embedded outline). */
+export type CourseTreeNodeType = {
+  _id: string;
+  kind: 'lesson' | 'folder';
+  title: string;
+  order: number;
+  content?: string;
+  note?: string;
+  children?: CourseTreeNodeType[];
+};
+
 export type PublisherType = {
   _id: string;
   name: string;
@@ -23,7 +34,10 @@ export type CourseType = {
   publisher: PublisherType;
   grade: string;
   subject: SubjectType;
-  lessons: LessonType[];
+  /** Nested lessons and folders (persisted on the course document). */
+  lessonTree: CourseTreeNodeType[];
+  /** Leaf lesson count (from GraphQL when requested). */
+  lessonCount?: number;
 };
 
 export type CoursesData = {
@@ -36,6 +50,8 @@ const FORM_MODES = [
   'course-edit',
   'lesson-new',
   'lesson-edit',
+  'folder-new',
+  'folder-edit',
 ] as const;
 
 export type FormModeType = (typeof FORM_MODES)[number];

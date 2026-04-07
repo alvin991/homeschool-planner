@@ -1,7 +1,10 @@
 import type { CourseType } from '../types';
+import { countLessonLeaves } from '../courseTree';
 import styles from "./CourseCard.module.css";
 
 const CourseCard: React.FC<{ course: CourseType }> = ({ course }) => {
+  const lessonTotal =
+    course.lessonCount ?? countLessonLeaves(course.lessonTree ?? []);
 
   return (
     <div className={styles.card}>
@@ -16,7 +19,9 @@ const CourseCard: React.FC<{ course: CourseType }> = ({ course }) => {
         </div>
         <div className={styles.lessonInfoContainer}>
           <div className={styles.lessonInfoRow}>
-            <span className={styles.publisher}>{course.lessons.length} lesson{course.lessons.length > 1 ? "s" : ""}</span>
+            <span className={styles.publisher}>
+              {lessonTotal} lesson{lessonTotal !== 1 ? 's' : ''}
+            </span>
             {(() => {
               // Use CSS variables instead of dynamic Tailwind classes.
               // Map a small set of semantic names to hex values.

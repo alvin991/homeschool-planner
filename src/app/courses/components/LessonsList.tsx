@@ -1,26 +1,22 @@
 "use client"; // Next.js App Router
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMutation } from '@apollo/client/react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
+import apolloClient from '@/utils/apolloClient';
 import { TreeRenderer } from './lessons-tree/TreeRender';
 import { TreeData, TreeItem } from './lessons-tree/types';
 import { findItem } from './lessons-tree/treeUtils';
 import useTreeDrag from './lessons-tree/useTreeDrag';
-import type { CourseType, LessonType } from '../types';
+import type { CourseType } from '../types';
+import { GET_COURSES, UPDATE_COURSE_LESSON_TREE } from '../api/course.graphql';
+import { apiTreeToTreeData, treeDataToLessonTreeJson } from '../courseTree';
 import { useCoursesUI } from '../CoursesUIContext';
 
 type LessonsListProps = {
   course: CourseType;
   onNewLesson?: (lesson: TreeItem) => void;
 };
-
-function courseLessonsToTreeData(lessons: LessonType[]): TreeData {
-  return lessons.map((lesson) => ({
-    id: String(lesson._id),
-    type: 'lesson' as const,
-    title: lesson.title,
-  }));
-}
 
 export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
   const {
@@ -30,15 +26,47 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     pendingLessonCreate,
     setFormMode,
     setSelectedLessonTreeId,
+    setLessonTreeUi,
   } = useCoursesUI();
   const [lessons, setLessons] = useState<TreeData>(() =>
-    courseLessonsToTreeData(course.lessons)
+    apiTreeToTreeData(course.lessonTree ?? []),
   );
+  const courseRef = useRef(course);
+  useEffect(() => {
+    courseRef.current = course;
+  }, [course]);
+
+  const [updateCourseLessonTree] = useMutation(UPDATE_COURSE_LESSON_TREE, {
+    client: apolloClient,
+    refetchQueries: [{ query: GET_COURSES }],
+    awaitRefetchQueries: true,
+  });
+
+  useEffect(() => {
+    setLessonTreeUi(lessons);
+  }, [lessons, setLessonTreeUi]);
+
+  const persistLessonsFromTree = useCallback(
+    async (nextTree: TreeData) => {
+      try {
+        await updateCourseLessonTree({
+          variables: {
+            id: courseRef.current._id,
+            lessonTree: treeDataToLessonTreeJson(nextTree, courseRef.current),
+          },
+        });
+      } catch (err) {
+        console.error('Failed to save lesson outline', err);
+      }
+    },
+    [updateCourseLessonTree],
+  );
+
   const lastHandledRequestIdRef = useRef<number | undefined>(undefined);
   const lastHandledCancelRequestIdRef = useRef<number | undefined>(undefined);
 
   const { activeId, insertBeforeId, handleDragStart, handleDragOver, handleDragEnd } =
-    useTreeDrag(lessons, setLessons);
+    useTreeDrag(lessons, setLessons, persistLessonsFromTree);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pressedId, setPressedId] = useState<string | null>(null);
 
@@ -59,12 +87,13 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
       type: 'lesson',
       title: 'Untitled',
     };
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLessons((prev) => [...prev, newLesson]);
-    setSelectedId(newLesson.id);
-    setPressedId(null);
-    setDraftLessonId(newLesson.id);
-    onNewLesson?.(newLesson);
+    queueMicrotask(() => {
+      setLessons((prev) => [...prev, newLesson]);
+      setSelectedId(newLesson.id);
+      setPressedId(null);
+      setDraftLessonId(newLesson.id);
+      onNewLesson?.(newLesson);
+    });
   }, [pendingLessonCreate?.seq, pendingLessonCreate?.courseId, course._id, onNewLesson, setDraftLessonId]);
 
   useEffect(() => {
@@ -73,10 +102,11 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     lastHandledCancelRequestIdRef.current = draftLessonCancelRequestId;
     if (!draftLessonCancelId) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLessons((prev) => prev.filter((item) => item.id !== draftLessonCancelId));
-    setSelectedId((prev) => (prev === draftLessonCancelId ? null : prev));
-    setPressedId((prev) => (prev === draftLessonCancelId ? null : prev));
+    queueMicrotask(() => {
+      setLessons((prev) => prev.filter((item) => item.id !== draftLessonCancelId));
+      setSelectedId((prev) => (prev === draftLessonCancelId ? null : prev));
+      setPressedId((prev) => (prev === draftLessonCancelId ? null : prev));
+    });
   }, [draftLessonCancelRequestId, draftLessonCancelId]);
 
   // const addLessonToRoot = (title: string) => {
@@ -102,6 +132,9 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
       if (item?.type === 'lesson') {
         setSelectedLessonTreeId(next);
         setFormMode('lesson-edit');
+      } else if (item?.type === 'folder') {
+        setSelectedLessonTreeId(next);
+        setFormMode('folder-edit');
       } else {
         setSelectedLessonTreeId(null);
         setFormMode('course-edit');

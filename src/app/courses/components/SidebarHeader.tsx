@@ -1,8 +1,9 @@
 type SidebarHeaderProps = {
-    onClick: () => void;
+    onClickAddLesson: () => void;
+    onClickAddFolder: () => void;
 }
 
-export default function SidebarHeader({ onClick }: SidebarHeaderProps) {
+export default function SidebarHeader({ onClickAddLesson, onClickAddFolder }: SidebarHeaderProps) {
   return (
     // <div className="flex align-center" style={{ padding: '20px', fontFamily: 'sans-serif' }}>
     <div className="flex justify-between items-center border-b border-gray-300 gap-2 pb-4">
@@ -20,7 +21,12 @@ export default function SidebarHeader({ onClick }: SidebarHeaderProps) {
       >
         <button 
             className="btn btn-ghost border border-gray-300 bg-white active:scale-[0.98]"
-            onClick={onClick}>
+            onClick={onClickAddFolder}>
+          ➕ Add Folder
+        </button>
+        <button 
+            className="btn btn-ghost border border-gray-300 bg-white active:scale-[0.98]"
+            onClick={onClickAddLesson}>
           ➕ Add Lesson
         </button>
       </div>

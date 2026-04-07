@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { CourseType, FormModeType } from './types';
+import type { TreeData } from './components/lessons-tree/types';
 
 type PendingLessonCreate = {
   seq: number;
@@ -11,7 +12,7 @@ type PendingLessonCreate = {
 type CoursesUIContextValue = {
   selectedCourse: CourseType | null;
   setSelectedCourse: (course: CourseType | null) => void;
-  /** Tree item id (`String(lesson._id)` or temp `lesson-…`) when a lesson row is selected; drives right-panel LessonForm. */
+  /** Tree item id for the right panel: lesson id (or temp `lesson-…`) in lesson modes, folder id in folder-edit, else null. */
   selectedLessonTreeId: string | null;
   setSelectedLessonTreeId: (id: string | null) => void;
   formMode: FormModeType;
@@ -24,6 +25,9 @@ type CoursesUIContextValue = {
   draftLessonCancelId: string | null;
   cancelDraftLesson: () => void;
   commitDraftLesson: () => void;
+  /** Latest outline from LessonsList (for LessonForm saves). */
+  lessonTreeUi: TreeData | null;
+  setLessonTreeUi: (tree: TreeData | null) => void;
 };
 
 const CoursesUIContext = createContext<CoursesUIContextValue | undefined>(
@@ -38,6 +42,7 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
   const [draftLessonId, setDraftLessonId] = useState<string | null>(null);
   const [draftLessonCancelRequestId, setDraftLessonCancelRequestId] = useState(0);
   const [draftLessonCancelId, setDraftLessonCancelId] = useState<string | null>(null);
+  const [lessonTreeUi, setLessonTreeUi] = useState<TreeData | null>(null);
 
   const triggerLessonCreate = (courseId: CourseType['_id']) => {
     setPendingLessonCreate((prev) => ({ seq: (prev?.seq ?? 0) + 1, courseId }));
@@ -77,6 +82,8 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
         draftLessonCancelId,
         cancelDraftLesson,
         commitDraftLesson,
+        lessonTreeUi,
+        setLessonTreeUi,
       }}
     >
       {children}
