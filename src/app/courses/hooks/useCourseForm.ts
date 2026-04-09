@@ -25,6 +25,7 @@ export function useCourseForm(course?: CourseType | null) {
   const [grade, setGrade] = useState(course?.grade ?? '');
   const [subjectName, setSubjectName] = useState(course?.subject?.name ?? '');
   const [subjectColor, setSubjectColor] = useState(course?.subject?.color ?? '');
+  const [editMode, setEditMode] = useState<boolean>(false);
 
   const { data: metaData } = useQuery<CourseFormMetaData>(GET_COURSE_FORM_META, {
     client: apolloClient,
@@ -75,16 +76,18 @@ export function useCourseForm(course?: CourseType | null) {
         await createCourse({ variables: { input } });
       }
 
-      setSelectedCourse(null);
-      setFormMode('course-list');
+      // setSelectedCourse(null);
+      // setFormMode('course-list');
+      setEditMode(false);
     } catch (err) {
       console.error('Failed to save course', err);
     }
   };
 
   const handleCancel = () => {
-    setSelectedCourse(null);
-    setFormMode('course-list');
+    // setSelectedCourse(null);
+    // setFormMode('course-list');
+    setEditMode(false);
   };
 
   return {
@@ -97,6 +100,8 @@ export function useCourseForm(course?: CourseType | null) {
     subjectName,
     subjectColor,
     setSubjectColor,
+    editMode,
+    setEditMode,
     metaData,
     handleSubjectSelect,
     handleSubmit,

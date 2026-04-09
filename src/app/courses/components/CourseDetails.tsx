@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
 import type { CourseType } from '../types';
 import { findLessonInTree } from '../courseTree';
-import CourseForm from './CourseForm';
 import FolderForm from './FolderForm';
-import ItemMenu from './ItemMenu';
 import LessonForm from './LessonForm';
 import { useCoursesUI } from '../CoursesUIContext';
+import CourseEmpty from './CourseEmpty';
 
 export type CourseDetailsProps = {
   course: CourseType;
@@ -26,9 +25,9 @@ function CourseDetails({ course, onBack }: CourseDetailsProps) {
   const showFolderForm = formMode === 'folder-new' || formMode === 'folder-edit';
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       {!showLessonForm && !showFolderForm ? (
-        <CourseForm course={course} />
+        <CourseEmpty />
       ) : (
         <>
           {/* <ItemMenu /> */}
@@ -45,7 +44,11 @@ function CourseDetails({ course, onBack }: CourseDetailsProps) {
           )}
         </>
       )}
-      <button className="btn btn-ghost border border-gray-300" onClick={onBack}>
+      <button
+        type="button"
+        className="btn btn-ghost mt-4 shrink-0 border border-gray-300"
+        onClick={onBack}
+      >
         Back to Courses
       </button>
     </div>

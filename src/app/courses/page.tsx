@@ -1,9 +1,5 @@
-import CoursesContainer from "./components/CoursesContainer";
+import CoursesContainer from './components/CoursesContainer';
 
 export default function CoursesPage() {
-  return (
-    <main>
-      <CoursesContainer />
-    </main>
-  );
+  return <CoursesContainer />;
 }
