@@ -8,10 +8,9 @@ import CourseEmpty from './CourseEmpty';
 
 export type CourseDetailsProps = {
   course: CourseType;
-  onBack: () => void;
 };
 
-function CourseDetails({ course, onBack }: CourseDetailsProps) {
+function CourseDetails({ course }: CourseDetailsProps) {
   const { formMode, selectedLessonTreeId } = useCoursesUI();
 
   const lessonForForm = useMemo(() => {
@@ -30,7 +29,6 @@ function CourseDetails({ course, onBack }: CourseDetailsProps) {
         <CourseEmpty />
       ) : (
         <>
-          {/* <ItemMenu /> */}
           {showLessonForm ? (
             <LessonForm
               key={`${formMode}-${lessonForForm?._id ?? selectedLessonTreeId ?? 'none'}`}
@@ -44,13 +42,6 @@ function CourseDetails({ course, onBack }: CourseDetailsProps) {
           )}
         </>
       )}
-      <button
-        type="button"
-        className="btn btn-ghost mt-4 shrink-0 border border-gray-300"
-        onClick={onBack}
-      >
-        Back to Courses
-      </button>
     </div>
   );
 }

@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { CourseType, FormModeType } from './types';
 import type { TreeData } from './components/lessons-tree/types';
 
@@ -28,6 +34,8 @@ type CoursesUIContextValue = {
   /** Latest outline from LessonsList (for LessonForm saves). */
   lessonTreeUi: TreeData | null;
   setLessonTreeUi: (tree: TreeData | null) => void;
+  /** Clear course selection and return to the course list (e.g. breadcrumb "Courses"). */
+  resetToCourseList: () => void;
 };
 
 const CoursesUIContext = createContext<CoursesUIContextValue | undefined>(
@@ -65,6 +73,16 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
     setFormMode('course-edit');
   };
 
+  const resetToCourseList = useCallback(() => {
+    setSelectedCourse(null);
+    setSelectedLessonTreeId(null);
+    setFormMode('course-list');
+    setPendingLessonCreate(null);
+    setDraftLessonId(null);
+    setDraftLessonCancelId(null);
+    setLessonTreeUi(null);
+  }, []);
+
   return (
     <CoursesUIContext.Provider
       value={{
@@ -84,6 +102,7 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
         commitDraftLesson,
         lessonTreeUi,
         setLessonTreeUi,
+        resetToCourseList,
       }}
     >
       {children}

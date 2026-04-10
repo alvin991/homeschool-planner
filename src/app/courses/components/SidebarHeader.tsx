@@ -11,13 +11,7 @@ export default function SidebarHeader({ onClickAddLesson, onClickAddFolder }: Si
         <h1 className="text-xl font-semibold text-gray-800">📚️ Lessons</h1>
       </div>
       <div
-        className="py-2"
-        // style={{
-        // //   marginBottom: '20px',
-        //   padding: '10px',
-        //   //   backgroundColor: '#f0f0f0',
-        //   borderRadius: '4px',
-        // }}
+        className="py-2 flex gap-2"
       >
         <button 
             className="btn btn-ghost border border-gray-300 bg-white active:scale-[0.98]"
