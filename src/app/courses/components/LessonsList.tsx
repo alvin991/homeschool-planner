@@ -26,7 +26,9 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     pendingTreeDraft,
     clearPendingTreeDraft,
     markTreeDraftSeqConsumed,
+    formMode,
     setFormMode,
+    selectedLessonTreeId,
     setSelectedLessonTreeId,
     setLessonTreeUi,
   } = useCoursesUI();
@@ -78,6 +80,18 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     useTreeDrag(lessons, setLessons, persistLessonsFromTree);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pressedId, setPressedId] = useState<string | null>(null);
+  const doubleClickArmRef = useRef<{
+    id: string;
+    t: number;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+
+  /** Clear tree highlight when the detail panel closes (Close / save / cancel from forms). */
+  useEffect(() => {
+    if (formMode === 'course-edit' && selectedLessonTreeId === null) {
+      queueMicrotask(() => setSelectedId(null));
+    }
+  }, [formMode, selectedLessonTreeId]);
 
   useEffect(() => {
     const seq = pendingTreeDraft?.seq;
@@ -159,28 +173,39 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
   // };
 
   const handleOnSelect = (id: string | null) => {
-    // Compute next selection first; never call context setters inside setSelectedId's updater —
-    // that runs during React's state update and triggers "Cannot update Provider while rendering".
-    const next = id === null ? null : selectedId === id ? null : id;
-    setSelectedId(next);
-
-    if (next === null) {
+    setSelectedId(id);
+    if (id === null) {
       setSelectedLessonTreeId(null);
       setFormMode('course-edit');
+      return;
+    }
+    const item = findItem(lessons, id);
+    if (item?.type === 'lesson') {
+      setSelectedLessonTreeId(id);
+      setFormMode('lesson-view');
+    } else if (item?.type === 'folder') {
+      setSelectedLessonTreeId(id);
+      setFormMode('folder-view');
     } else {
-      const item = findItem(lessons, next);
-      if (item?.type === 'lesson') {
-        setSelectedLessonTreeId(next);
-        setFormMode('lesson-edit');
-      } else if (item?.type === 'folder') {
-        setSelectedLessonTreeId(next);
-        setFormMode('folder-edit');
-      } else {
-        setSelectedLessonTreeId(null);
-        setFormMode('course-edit');
-      }
+      setSelectedLessonTreeId(null);
+      setFormMode('course-edit');
     }
   };
+
+  const handleRequestEdit = useCallback(
+    (id: string) => {
+      setSelectedId(id);
+      const item = findItem(lessons, id);
+      if (item?.type === 'lesson') {
+        setSelectedLessonTreeId(id);
+        setFormMode('lesson-edit');
+      } else if (item?.type === 'folder') {
+        setSelectedLessonTreeId(id);
+        setFormMode('folder-edit');
+      }
+    },
+    [lessons, setFormMode, setSelectedLessonTreeId],
+  );
 
   return (
     // <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
@@ -209,6 +234,8 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
           insertBeforeId={insertBeforeId}
           selectedId={selectedId}
           onSelect={handleOnSelect}
+          onRequestEdit={handleRequestEdit}
+          doubleClickArmRef={doubleClickArmRef}
           pressedId={pressedId}
           onPressChange={setPressedId}
         />

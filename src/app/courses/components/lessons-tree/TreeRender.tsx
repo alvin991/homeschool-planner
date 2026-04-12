@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { type RefObject, useRef } from 'react';
 import { SortableContext } from '@dnd-kit/sortable';
 import { TreeData } from './types';
 import { TreeItemComponent } from './TreeItemComponent';
@@ -12,13 +12,37 @@ interface TreeRendererProps {
   insertBeforeId?: string | null;
   selectedId?: string | null;
   onSelect?: (id: string | null) => void;
+  /** Second quick press on the same row opens edit mode (handled in LessonsList). */
+  onRequestEdit?: (id: string) => void;
+  /** Shared across nested renderers so double-tap works at any depth. */
+  doubleClickArmRef?: RefObject<{
+    id: string;
+    t: number;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>;
   pressedId?: string | null;
   onPressChange?: (id: string | null) => void;
 }
 
-export function TreeRenderer({ items, depth = 0, insertBeforeId, selectedId, onSelect, pressedId, onPressChange }: TreeRendererProps) {
+export function TreeRenderer({
+  items,
+  depth = 0,
+  insertBeforeId,
+  selectedId,
+  onSelect,
+  onRequestEdit,
+  doubleClickArmRef: doubleClickArmRefProp,
+  pressedId,
+  onPressChange,
+}: TreeRendererProps) {
   const ids = flattenTree(items).map(item => item.id);
   const pointerRef = useRef<{ id?: string; x: number; y: number; moved: boolean } | null>(null);
+  const localDoubleClickArmRef = useRef<{
+    id: string;
+    t: number;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+  const doubleClickArmRef = doubleClickArmRefProp ?? localDoubleClickArmRef;
   const THRESHOLD = 6;
 
   return (
@@ -56,8 +80,33 @@ export function TreeRenderer({ items, depth = 0, insertBeforeId, selectedId, onS
             e.stopPropagation();
             const p = pointerRef.current;
             if (p && p.id === item.id && !p.moved) {
-              // toggle: click selected item to deselect, click unselected item to select
-              onSelect?.(selectedId === item.id ? null : item.id);
+              const now = Date.now();
+              const arm = doubleClickArmRef.current;
+              const secondTapForEdit =
+                onRequestEdit &&
+                arm &&
+                arm.id === item.id &&
+                now - arm.t < 400;
+
+              if (secondTapForEdit) {
+                clearTimeout(arm.timer);
+                doubleClickArmRef.current = null;
+                onRequestEdit(item.id);
+              } else {
+                const next = selectedId === item.id ? null : item.id;
+                if (doubleClickArmRef.current?.timer) {
+                  clearTimeout(doubleClickArmRef.current.timer);
+                }
+                if (next === item.id && onRequestEdit) {
+                  const timer = setTimeout(() => {
+                    doubleClickArmRef.current = null;
+                  }, 400);
+                  doubleClickArmRef.current = { id: item.id, t: now, timer };
+                } else {
+                  doubleClickArmRef.current = null;
+                }
+                onSelect?.(next);
+              }
             }
             pointerRef.current = null;
             onPressChange?.(null);
@@ -82,6 +131,8 @@ export function TreeRenderer({ items, depth = 0, insertBeforeId, selectedId, onS
               insertBeforeId={insertBeforeId}
               selectedId={selectedId}
               onSelect={onSelect}
+              onRequestEdit={onRequestEdit}
+              doubleClickArmRef={doubleClickArmRef}
               pressedId={pressedId}       // fixed: was missing in recursive call
               onPressChange={onPressChange} // fixed: was missing in recursive call
             />

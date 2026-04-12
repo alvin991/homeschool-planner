@@ -21,9 +21,18 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
     cancelDraftItem,
     commitDraftItem,
     formMode,
+    setFormMode,
     selectedLessonTreeId,
+    setSelectedLessonTreeId,
     lessonTreeUi,
   } = useCoursesUI();
+
+  const isViewMode = formMode === 'lesson-view';
+
+  const closeDetailPanel = () => {
+    setSelectedLessonTreeId(null);
+    setFormMode('course-edit');
+  };
 
   const [updateCourseLessonTree, { loading }] = useMutation(UPDATE_COURSE_LESSON_TREE, {
     client: apolloClient,
@@ -33,6 +42,7 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isViewMode) return;
     if (!title.trim()) {
       console.warn('Title is required');
       return;
@@ -84,6 +94,7 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
   };
 
   const handleDelete = async () => {
+    if (isViewMode) return;
     if (formMode === 'lesson-new') {
       if (
         !window.confirm(
@@ -137,7 +148,7 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
         className="w-full max-w-3xl bg-white rounded-lg p-6 space-y-4"
       >
         <h1 className="text-2xl font-semibold text-gray-800 mb-2">
-          {lesson ? 'Edit Lesson' : 'New Lesson'}
+          {isViewMode ? 'Lesson' : lesson ? 'Edit Lesson' : 'New Lesson'}
         </h1>
         <div>
           <label className="block text-sm font-medium text-gray-700">
@@ -145,9 +156,13 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
           </label>
           <input
             value={title}
+            readOnly={isViewMode}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="The name of this scheduled item"
-            className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className={
+              'mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ' +
+              (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50')
+            }
           />
           <p className="mt-1 text-xs text-gray-400">
             The name of this scheduled item
@@ -160,10 +175,14 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
           </label>
           <textarea
             value={description}
+            readOnly={isViewMode}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe what students will learn or do..."
             rows={3}
-            className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className={
+              'mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ' +
+              (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50')
+            }
           />
           <p className="mt-1 text-xs text-gray-400">
             Brief description of what this item covers
@@ -176,10 +195,14 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
           </label>
           <textarea
             value={content}
+            readOnly={isViewMode}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Add content, instructions, or notes..."
             rows={8}
-            className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className={
+              'mt-1 block w-full rounded-lg border-gray-200 px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ' +
+              (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50')
+            }
           />
           <p className="mt-1 text-xs text-gray-400">
             Main content and activities for the student
@@ -187,30 +210,51 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
-          <button
-            type="button"
-            disabled={loading}
-            className="btn btn-ghost border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
-            onClick={handleDelete}
-          >
-            Delete
-          </button>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn btn-ghost border border-gray-300"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-ghost border border-gray-300 disabled:opacity-50"
-            >
-              {loading ? 'Saving…' : 'Save'}
-            </button>
-          </div>
+          {isViewMode ? (
+            <div className="ml-auto flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-ghost border border-gray-300"
+                onClick={closeDetailPanel}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
+                onClick={() => setFormMode('lesson-edit')}
+              >
+                Edit
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={loading}
+                className="btn btn-ghost border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                onClick={handleDelete}
+              >
+                Delete
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-ghost border border-gray-300"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-ghost border border-gray-300 disabled:opacity-50"
+                >
+                  {loading ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </form>
     </div>

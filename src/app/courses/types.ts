@@ -49,8 +49,10 @@ const FORM_MODES = [
   'course-new',
   'course-edit',
   'lesson-new',
+  'lesson-view',
   'lesson-edit',
   'folder-new',
+  'folder-view',
   'folder-edit',
 ] as const;
 

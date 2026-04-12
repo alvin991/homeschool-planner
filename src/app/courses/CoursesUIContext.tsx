@@ -20,7 +20,7 @@ type PendingTreeDraft = {
 type CoursesUIContextValue = {
   selectedCourse: CourseType | null;
   setSelectedCourse: (course: CourseType | null) => void;
-  /** Tree item id for the right panel: lesson id (or temp `lesson-…`) in lesson modes, folder id in folder-edit, else null. */
+  /** Tree item id for the right panel: lesson id (or temp `lesson-…`) in lesson modes, folder id in folder-view/edit, else null. */
   selectedLessonTreeId: string | null;
   setSelectedLessonTreeId: (id: string | null) => void;
   formMode: FormModeType;

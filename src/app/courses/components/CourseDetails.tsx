@@ -15,13 +15,15 @@ function CourseDetails({ course }: CourseDetailsProps) {
 
   const lessonForForm = useMemo(() => {
     if (formMode === 'lesson-new') return null;
-    if (formMode !== 'lesson-edit') return null;
+    if (formMode !== 'lesson-edit' && formMode !== 'lesson-view') return null;
     if (!selectedLessonTreeId) return null;
     return findLessonInTree(course.lessonTree ?? [], selectedLessonTreeId);
   }, [course.lessonTree, formMode, selectedLessonTreeId]);
 
-  const showLessonForm = formMode === 'lesson-new' || formMode === 'lesson-edit';
-  const showFolderForm = formMode === 'folder-new' || formMode === 'folder-edit';
+  const showLessonForm =
+    formMode === 'lesson-new' || formMode === 'lesson-view' || formMode === 'lesson-edit';
+  const showFolderForm =
+    formMode === 'folder-new' || formMode === 'folder-view' || formMode === 'folder-edit';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

@@ -38,10 +38,13 @@ export default function CourseForm({ course }: CourseFormNewProps) {
       onDoubleClickCapture={toggleEditModeOnDblClick}
     >
       <form className="w-full bg-white rounded-lg p-6 space-y-4">
-        <p className="text-xs text-gray-500">
-          Double-click anywhere in this bar to toggle{' '}
-          {editMode ? 'view' : 'edit'} mode.
-        </p>
+        {!editMode && (
+          <>
+            <p className="text-xs text-gray-500">
+              Double-click anywhere in this bar to edit the course information.
+            </p>
+          </>
+        )}
         <div className="flex w-full gap-2">
           {editMode ? (
             <div className="flex flex-col w-full gap-2">
