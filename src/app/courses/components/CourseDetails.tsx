@@ -38,6 +38,7 @@ function CourseDetails({ course }: CourseDetailsProps) {
           ) : (
             <FolderForm
               key={`${formMode}-${selectedLessonTreeId ?? 'new'}`}
+              course={course}
             />
           )}
         </>

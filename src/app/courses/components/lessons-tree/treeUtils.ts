@@ -114,3 +114,33 @@ export function addItemToFolder(
   
   return updated;
 }
+
+/**
+ * Removes a lesson or folder from the tree. If the target is a folder with children,
+ * those direct children are appended to the course root (in order), then the folder is removed.
+ */
+export function removeTreeItemHoistingFolderChildrenToRoot(
+  items: TreeData,
+  id: string,
+): TreeData | null {
+  const clone = JSON.parse(JSON.stringify(items)) as TreeData;
+  const target = findItem(clone, id);
+  if (!target) return null;
+
+  const hoisted: TreeData =
+    target.type === 'folder' && target.children?.length
+      ? (JSON.parse(JSON.stringify(target.children)) as TreeData)
+      : [];
+
+  const parent = findParent(clone, id);
+  if (parent) {
+    if (!parent.parent.children) return null;
+    parent.parent.children.splice(parent.index, 1);
+  } else {
+    const idx = clone.findIndex((n) => n.id === id);
+    if (idx === -1) return null;
+    clone.splice(idx, 1);
+  }
+
+  return [...clone, ...hoisted];
+}

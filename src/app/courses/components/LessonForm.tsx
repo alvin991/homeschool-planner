@@ -6,6 +6,7 @@ import type { CourseType, LessonType } from '../types';
 import { GET_COURSES, UPDATE_COURSE_LESSON_TREE } from '../api/course.graphql';
 import { apiTreeToTreeData, treeDataToLessonTreeJson } from '../courseTree';
 import { useCoursesUI } from '../CoursesUIContext';
+import { removeTreeItemHoistingFolderChildrenToRoot } from './lessons-tree/treeUtils';
 
 export type LessonFormProps = {
   course: CourseType;
@@ -17,8 +18,8 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
   const [description, setDescription] = useState(() => lesson?.note ?? '');
   const [content, setContent] = useState(() => lesson?.content ?? '');
   const {
-    cancelDraftLesson,
-    commitDraftLesson,
+    cancelDraftItem,
+    commitDraftItem,
     formMode,
     selectedLessonTreeId,
     lessonTreeUi,
@@ -72,14 +73,61 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
         console.warn('Cannot save lesson: missing selection');
         return;
       }
-      commitDraftLesson();
+      commitDraftItem();
     } catch (err) {
       console.error('Failed to save lesson', err);
     }
   };
 
   const handleCancel = () => {
-    cancelDraftLesson();
+    cancelDraftItem();
+  };
+
+  const handleDelete = async () => {
+    if (formMode === 'lesson-new') {
+      if (
+        !window.confirm(
+          'Remove this new lesson from the outline? Nothing will be saved to the server.',
+        )
+      ) {
+        return;
+      }
+      cancelDraftItem();
+      return;
+    }
+
+    if (formMode !== 'lesson-edit' || !lesson || !selectedLessonTreeId) {
+      return;
+    }
+    if (
+      !window.confirm(
+        'Delete this lesson from the course? This cannot be undone.',
+      )
+    ) {
+      return;
+    }
+
+    const tree = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
+    const nextTree = removeTreeItemHoistingFolderChildrenToRoot(
+      tree,
+      selectedLessonTreeId,
+    );
+    if (!nextTree) {
+      console.warn('Could not remove lesson from tree');
+      return;
+    }
+
+    try {
+      await updateCourseLessonTree({
+        variables: {
+          id: course._id,
+          lessonTree: treeDataToLessonTreeJson(nextTree, course),
+        },
+      });
+      commitDraftItem();
+    } catch (err) {
+      console.error('Failed to delete lesson', err);
+    }
   };
 
   return (
@@ -138,21 +186,31 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
           </p>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
           <button
             type="button"
-            className="btn btn-ghost border border-gray-300"
-            onClick={handleCancel}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
             disabled={loading}
-            className="btn btn-ghost border border-gray-300 disabled:opacity-50"
+            className="btn btn-ghost border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
+            onClick={handleDelete}
           >
-            {loading ? 'Saving…' : 'Save'}
+            Delete
           </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-ghost border border-gray-300"
+              onClick={handleCancel}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-ghost border border-gray-300 disabled:opacity-50"
+            >
+              {loading ? 'Saving…' : 'Save'}
+            </button>
+          </div>
         </div>
       </form>
     </div>

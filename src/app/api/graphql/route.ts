@@ -303,16 +303,22 @@ const resolvers = {
       _: unknown,
       { id, lessonTree }: { id: string; lessonTree: unknown },
     ) => {
-      const courseDoc = await Course.findById(id);
-      if (!courseDoc) throw new Error('Course not found');
-
       const mapped = mapClientLessonTreeToMongo(
         Array.isArray(lessonTree) ? lessonTree : [],
       );
-      courseDoc.set('lessonTree', mapped);
-      await courseDoc.save();
+      // Atomic $set avoids Mongoose __v races when multiple lessonTree updates overlap
+      // (e.g. drag persist + refetch-driven UI + another mutation).
+      const updated = await Course.findByIdAndUpdate(
+        id,
+        { $set: { lessonTree: mapped } },
+        { new: true, runValidators: true },
+      )
+        .populate('subject')
+        .populate('publisher')
+        .lean();
 
-      return await Course.findById(courseDoc._id).lean().populate('subject').populate('publisher');
+      if (!updated) throw new Error('Course not found');
+      return updated;
     },
   },
 };

@@ -4,15 +4,17 @@ import {
   createContext,
   useCallback,
   useContext,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import type { CourseType, FormModeType } from './types';
 import type { TreeData } from './components/lessons-tree/types';
 
-type PendingLessonCreate = {
+type PendingTreeDraft = {
   seq: number;
   courseId: CourseType['_id'];
+  kind: 'lesson' | 'folder';
 };
 
 type CoursesUIContextValue = {
@@ -24,16 +26,25 @@ type CoursesUIContextValue = {
   formMode: FormModeType;
   setFormMode: (formMode: FormModeType) => void;
   triggerLessonCreate: (courseId: CourseType['_id']) => void;
-  pendingLessonCreate: PendingLessonCreate | null;
-  draftLessonId: string | null;
-  setDraftLessonId: (lessonId: string | null) => void;
+  triggerFolderCreate: (courseId: CourseType['_id']) => void;
+  pendingTreeDraft: PendingTreeDraft | null;
+  /** Temp tree item id while creating a new lesson or folder (removed on cancel/save). */
+  draftItemId: string | null;
+  setDraftItemId: (id: string | null) => void;
   draftLessonCancelRequestId: number;
   draftLessonCancelId: string | null;
-  cancelDraftLesson: () => void;
-  commitDraftLesson: () => void;
+  cancelDraftItem: () => void;
+  commitDraftItem: () => void;
   /** Latest outline from LessonsList (for LessonForm saves). */
   lessonTreeUi: TreeData | null;
   setLessonTreeUi: (tree: TreeData | null) => void;
+  /** Clear the pending add-lesson/add-folder signal (after LessonsList applies it, or defensively). */
+  clearPendingTreeDraft: () => void;
+  /**
+   * Returns true the first time this `seq` is seen (across remounts). Duplicate deliveries
+   * (e.g. Strict Mode or LessonsList remount while stale pending state lingered) return false.
+   */
+  markTreeDraftSeqConsumed: (seq: number) => boolean;
   /** Clear course selection and return to the course list (e.g. breadcrumb "Courses"). */
   resetToCourseList: () => void;
 };
@@ -46,39 +57,70 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
   const [selectedCourse, setSelectedCourse] = useState<CourseType | null>(null);
   const [selectedLessonTreeId, setSelectedLessonTreeId] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<FormModeType>('course-list');
-  const [pendingLessonCreate, setPendingLessonCreate] = useState<PendingLessonCreate | null>(null);
-  const [draftLessonId, setDraftLessonId] = useState<string | null>(null);
+  const [pendingTreeDraft, setPendingTreeDraft] = useState<PendingTreeDraft | null>(null);
+  const [draftItemId, setDraftItemId] = useState<string | null>(null);
   const [draftLessonCancelRequestId, setDraftLessonCancelRequestId] = useState(0);
   const [draftLessonCancelId, setDraftLessonCancelId] = useState<string | null>(null);
   const [lessonTreeUi, setLessonTreeUi] = useState<TreeData | null>(null);
 
+  /** Monotonic counter so each trigger has a unique seq even after `pendingTreeDraft` is cleared. */
+  const treeDraftSeqRef = useRef(0);
+  /** Survives LessonsList remount (e.g. after save + refetch changes sidebar `key`). */
+  const lastConsumedTreeDraftSeqRef = useRef(0);
+
+  const clearPendingTreeDraft = useCallback(() => {
+    setPendingTreeDraft(null);
+  }, []);
+
+  const markTreeDraftSeqConsumed = useCallback((seq: number) => {
+    if (seq <= lastConsumedTreeDraftSeqRef.current) return false;
+    lastConsumedTreeDraftSeqRef.current = seq;
+    return true;
+  }, []);
+
   const triggerLessonCreate = (courseId: CourseType['_id']) => {
-    setPendingLessonCreate((prev) => ({ seq: (prev?.seq ?? 0) + 1, courseId }));
+    treeDraftSeqRef.current += 1;
+    setPendingTreeDraft({
+      seq: treeDraftSeqRef.current,
+      courseId,
+      kind: 'lesson',
+    });
   };
 
-  const cancelDraftLesson = () => {
-    if (draftLessonId) {
-      setDraftLessonCancelId(draftLessonId);
+  const triggerFolderCreate = (courseId: CourseType['_id']) => {
+    treeDraftSeqRef.current += 1;
+    setPendingTreeDraft({
+      seq: treeDraftSeqRef.current,
+      courseId,
+      kind: 'folder',
+    });
+  };
+
+  const cancelDraftItem = () => {
+    if (draftItemId) {
+      setDraftLessonCancelId(draftItemId);
       setDraftLessonCancelRequestId((n) => n + 1);
     }
-    setDraftLessonId(null);
+    setDraftItemId(null);
     setSelectedLessonTreeId(null);
     setFormMode('course-edit');
+    setPendingTreeDraft(null);
   };
 
-  const commitDraftLesson = () => {
-    setDraftLessonId(null);
+  const commitDraftItem = () => {
+    setDraftItemId(null);
     setDraftLessonCancelId(null);
     setSelectedLessonTreeId(null);
     setFormMode('course-edit');
+    setPendingTreeDraft(null);
   };
 
   const resetToCourseList = useCallback(() => {
     setSelectedCourse(null);
     setSelectedLessonTreeId(null);
     setFormMode('course-list');
-    setPendingLessonCreate(null);
-    setDraftLessonId(null);
+    setPendingTreeDraft(null);
+    setDraftItemId(null);
     setDraftLessonCancelId(null);
     setLessonTreeUi(null);
   }, []);
@@ -93,15 +135,18 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
         formMode,
         setFormMode,
         triggerLessonCreate,
-        pendingLessonCreate,
-        draftLessonId,
-        setDraftLessonId,
+        triggerFolderCreate,
+        pendingTreeDraft,
+        draftItemId,
+        setDraftItemId,
         draftLessonCancelRequestId,
         draftLessonCancelId,
-        cancelDraftLesson,
-        commitDraftLesson,
+        cancelDraftItem,
+        commitDraftItem,
         lessonTreeUi,
         setLessonTreeUi,
+        clearPendingTreeDraft,
+        markTreeDraftSeqConsumed,
         resetToCourseList,
       }}
     >

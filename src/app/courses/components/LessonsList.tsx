@@ -20,10 +20,12 @@ type LessonsListProps = {
 
 export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
   const {
-    setDraftLessonId,
+    setDraftItemId,
     draftLessonCancelRequestId,
     draftLessonCancelId,
-    pendingLessonCreate,
+    pendingTreeDraft,
+    clearPendingTreeDraft,
+    markTreeDraftSeqConsumed,
     setFormMode,
     setSelectedLessonTreeId,
     setLessonTreeUi,
@@ -42,27 +44,34 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     awaitRefetchQueries: true,
   });
 
+  /** Serialize outline saves so overlapping drags / refetches cannot hit stale Mongoose versions. */
+  const persistOutlineChainRef = useRef<Promise<void>>(Promise.resolve());
+
   useEffect(() => {
     setLessonTreeUi(lessons);
   }, [lessons, setLessonTreeUi]);
 
   const persistLessonsFromTree = useCallback(
     async (nextTree: TreeData) => {
-      try {
-        await updateCourseLessonTree({
-          variables: {
-            id: courseRef.current._id,
-            lessonTree: treeDataToLessonTreeJson(nextTree, courseRef.current),
-          },
-        });
-      } catch (err) {
-        console.error('Failed to save lesson outline', err);
-      }
+      const run = async () => {
+        try {
+          await updateCourseLessonTree({
+            variables: {
+              id: courseRef.current._id,
+              lessonTree: treeDataToLessonTreeJson(nextTree, courseRef.current),
+            },
+          });
+        } catch (err) {
+          console.error('Failed to save lesson outline', err);
+        }
+      };
+      persistOutlineChainRef.current =
+        persistOutlineChainRef.current.then(run);
+      await persistOutlineChainRef.current;
     },
     [updateCourseLessonTree],
   );
 
-  const lastHandledRequestIdRef = useRef<number | undefined>(undefined);
   const lastHandledCancelRequestIdRef = useRef<number | undefined>(undefined);
 
   const { activeId, insertBeforeId, handleDragStart, handleDragOver, handleDragEnd } =
@@ -71,30 +80,61 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
   const [pressedId, setPressedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const seq = pendingLessonCreate?.seq;
-    const requestCourseId = pendingLessonCreate?.courseId;
-    if (!seq || !requestCourseId) return;
+    const seq = pendingTreeDraft?.seq;
+    const requestCourseId = pendingTreeDraft?.courseId;
+    const kind = pendingTreeDraft?.kind;
+    if (!seq || !requestCourseId || !kind) return;
     if (requestCourseId !== course._id) return;
-    if (lastHandledRequestIdRef.current === seq) return;
     if (seq <= 0) {
-      lastHandledRequestIdRef.current = seq;
+      clearPendingTreeDraft();
       return;
     }
 
-    lastHandledRequestIdRef.current = seq;
-    const newLesson: TreeItem = {
-      id: `lesson-${Date.now()}`,
-      type: 'lesson',
-      title: 'Untitled',
-    };
+    if (!markTreeDraftSeqConsumed(seq)) {
+      clearPendingTreeDraft();
+      return;
+    }
+
+    clearPendingTreeDraft();
+
     queueMicrotask(() => {
-      setLessons((prev) => [...prev, newLesson]);
-      setSelectedId(newLesson.id);
+      if (kind === 'lesson') {
+        const newLesson: TreeItem = {
+          id: `lesson-${Date.now()}`,
+          type: 'lesson',
+          title: 'Untitled',
+        };
+        setLessons((prev) => [...prev, newLesson]);
+        setSelectedId(newLesson.id);
+        setPressedId(null);
+        setSelectedLessonTreeId(newLesson.id);
+        setDraftItemId(newLesson.id);
+        onNewLesson?.(newLesson);
+        return;
+      }
+      const newFolder: TreeItem = {
+        id: `folder-${Date.now()}`,
+        type: 'folder',
+        title: 'Untitled folder',
+        children: [],
+      };
+      setLessons((prev) => [...prev, newFolder]);
+      setSelectedId(newFolder.id);
       setPressedId(null);
-      setDraftLessonId(newLesson.id);
-      onNewLesson?.(newLesson);
+      setSelectedLessonTreeId(newFolder.id);
+      setDraftItemId(newFolder.id);
     });
-  }, [pendingLessonCreate?.seq, pendingLessonCreate?.courseId, course._id, onNewLesson, setDraftLessonId]);
+  }, [
+    pendingTreeDraft?.seq,
+    pendingTreeDraft?.courseId,
+    pendingTreeDraft?.kind,
+    course._id,
+    clearPendingTreeDraft,
+    markTreeDraftSeqConsumed,
+    onNewLesson,
+    setDraftItemId,
+    setSelectedLessonTreeId,
+  ]);
 
   useEffect(() => {
     if (draftLessonCancelRequestId <= 0) return;

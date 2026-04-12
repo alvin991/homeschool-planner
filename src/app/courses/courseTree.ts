@@ -86,9 +86,11 @@ function mapTreeItem(
 ): Record<string, unknown> {
   const order = index;
   if (node.type === 'folder') {
+    const o = overrides?.[node.id];
+    const title = o?.title ?? node.title;
     const base: Record<string, unknown> = {
       kind: 'folder',
-      title: node.title,
+      title,
       order,
       children: (node.children ?? []).map((c, i) =>
         mapTreeItem(c, i, course, overrides),
