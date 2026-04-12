@@ -13,7 +13,7 @@ interface TreeRendererProps {
   selectedId?: string | null;
   onSelect?: (id: string | null) => void;
   /** Second quick press on the same row opens edit mode (handled in LessonsList). */
-  onRequestEdit?: (id: string) => void;
+  onRequestEdit?: (id: string) => void | Promise<void>;
   /** Shared across nested renderers so double-tap works at any depth. */
   doubleClickArmRef?: RefObject<{
     id: string;
@@ -79,37 +79,42 @@ export function TreeRenderer({
             if (nearest && nearest !== e.currentTarget) return;
             e.stopPropagation();
             const p = pointerRef.current;
-            if (p && p.id === item.id && !p.moved) {
-              const now = Date.now();
-              const arm = doubleClickArmRef.current;
-              const secondTapForEdit =
-                onRequestEdit &&
-                arm &&
-                arm.id === item.id &&
-                now - arm.t < 400;
+            void (async () => {
+              try {
+                if (p && p.id === item.id && !p.moved) {
+                  const now = Date.now();
+                  const arm = doubleClickArmRef.current;
+                  const secondTapForEdit =
+                    onRequestEdit &&
+                    arm &&
+                    arm.id === item.id &&
+                    now - arm.t < 400;
 
-              if (secondTapForEdit) {
-                clearTimeout(arm.timer);
-                doubleClickArmRef.current = null;
-                onRequestEdit(item.id);
-              } else {
-                const next = selectedId === item.id ? null : item.id;
-                if (doubleClickArmRef.current?.timer) {
-                  clearTimeout(doubleClickArmRef.current.timer);
-                }
-                if (next === item.id && onRequestEdit) {
-                  const timer = setTimeout(() => {
+                  if (secondTapForEdit) {
+                    clearTimeout(arm.timer);
                     doubleClickArmRef.current = null;
-                  }, 400);
-                  doubleClickArmRef.current = { id: item.id, t: now, timer };
-                } else {
-                  doubleClickArmRef.current = null;
+                    await onRequestEdit(item.id);
+                  } else {
+                    const next = selectedId === item.id ? null : item.id;
+                    if (doubleClickArmRef.current?.timer) {
+                      clearTimeout(doubleClickArmRef.current.timer);
+                    }
+                    if (next === item.id && onRequestEdit) {
+                      const timer = setTimeout(() => {
+                        doubleClickArmRef.current = null;
+                      }, 400);
+                      doubleClickArmRef.current = { id: item.id, t: now, timer };
+                    } else {
+                      doubleClickArmRef.current = null;
+                    }
+                    onSelect?.(next);
+                  }
                 }
-                onSelect?.(next);
+              } finally {
+                pointerRef.current = null;
+                onPressChange?.(null);
               }
-            }
-            pointerRef.current = null;
-            onPressChange?.(null);
+            })();
           }}
           onPointerCancel={() => {
             pointerRef.current = null;

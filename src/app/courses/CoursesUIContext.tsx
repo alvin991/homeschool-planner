@@ -47,6 +47,15 @@ type CoursesUIContextValue = {
   markTreeDraftSeqConsumed: (seq: number) => boolean;
   /** Clear course selection and return to the course list (e.g. breadcrumb "Courses"). */
   resetToCourseList: () => void;
+  /**
+   * CourseForm registers a flush (validate + save) while its fields are in local edit mode.
+   * Returns false if validation or save failed (caller must abort navigation).
+   */
+  registerCourseFlush: (fn: (() => Promise<boolean>) | null) => void;
+  /** LessonForm / FolderForm register flush for lesson-edit/new or folder-edit/new. */
+  registerDetailFlush: (fn: (() => Promise<boolean>) | null) => void;
+  runCourseFlush: () => Promise<boolean>;
+  runDetailFlush: () => Promise<boolean>;
 };
 
 const CoursesUIContext = createContext<CoursesUIContextValue | undefined>(
@@ -67,6 +76,29 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
   const treeDraftSeqRef = useRef(0);
   /** Survives LessonsList remount (e.g. after save + refetch changes sidebar `key`). */
   const lastConsumedTreeDraftSeqRef = useRef(0);
+
+  const courseFlushRef = useRef<(() => Promise<boolean>) | null>(null);
+  const detailFlushRef = useRef<(() => Promise<boolean>) | null>(null);
+
+  const registerCourseFlush = useCallback((fn: (() => Promise<boolean>) | null) => {
+    courseFlushRef.current = fn;
+  }, []);
+
+  const registerDetailFlush = useCallback((fn: (() => Promise<boolean>) | null) => {
+    detailFlushRef.current = fn;
+  }, []);
+
+  const runCourseFlush = useCallback(async () => {
+    const fn = courseFlushRef.current;
+    if (!fn) return true;
+    return fn();
+  }, []);
+
+  const runDetailFlush = useCallback(async () => {
+    const fn = detailFlushRef.current;
+    if (!fn) return true;
+    return fn();
+  }, []);
 
   const clearPendingTreeDraft = useCallback(() => {
     setPendingTreeDraft(null);
@@ -148,6 +180,10 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
         clearPendingTreeDraft,
         markTreeDraftSeqConsumed,
         resetToCourseList,
+        registerCourseFlush,
+        registerDetailFlush,
+        runCourseFlush,
+        runDetailFlush,
       }}
     >
       {children}

@@ -31,6 +31,7 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     selectedLessonTreeId,
     setSelectedLessonTreeId,
     setLessonTreeUi,
+    runCourseFlush,
   } = useCoursesUI();
   const [lessons, setLessons] = useState<TreeData>(() =>
     apiTreeToTreeData(course.lessonTree ?? []),
@@ -173,27 +174,35 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
   // };
 
   const handleOnSelect = (id: string | null) => {
-    setSelectedId(id);
-    if (id === null) {
-      setSelectedLessonTreeId(null);
-      setFormMode('course-edit');
-      return;
-    }
-    const item = findItem(lessons, id);
-    if (item?.type === 'lesson') {
-      setSelectedLessonTreeId(id);
-      setFormMode('lesson-view');
-    } else if (item?.type === 'folder') {
-      setSelectedLessonTreeId(id);
-      setFormMode('folder-view');
-    } else {
-      setSelectedLessonTreeId(null);
-      setFormMode('course-edit');
-    }
+    void (async () => {
+      if (id !== null) {
+        const ok = await runCourseFlush();
+        if (!ok) return;
+      }
+      setSelectedId(id);
+      if (id === null) {
+        setSelectedLessonTreeId(null);
+        setFormMode('course-edit');
+        return;
+      }
+      const item = findItem(lessons, id);
+      if (item?.type === 'lesson') {
+        setSelectedLessonTreeId(id);
+        setFormMode('lesson-view');
+      } else if (item?.type === 'folder') {
+        setSelectedLessonTreeId(id);
+        setFormMode('folder-view');
+      } else {
+        setSelectedLessonTreeId(null);
+        setFormMode('course-edit');
+      }
+    })();
   };
 
   const handleRequestEdit = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      const ok = await runCourseFlush();
+      if (!ok) return;
       setSelectedId(id);
       const item = findItem(lessons, id);
       if (item?.type === 'lesson') {
@@ -204,7 +213,7 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
         setFormMode('folder-edit');
       }
     },
-    [lessons, setFormMode, setSelectedLessonTreeId],
+    [lessons, runCourseFlush, setFormMode, setSelectedLessonTreeId],
   );
 
   return (
@@ -292,10 +301,10 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
       </DndContext>
 
       {/* Debug: Show current tree structure */}
-      <details style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f9f9f9' }}>
+      {/* <details style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f9f9f9' }}>
         <summary>View Tree Structure (Debug)</summary>
         <pre>{JSON.stringify(lessons, null, 2)}</pre>
-      </details>
+      </details> */}
     </div>
   );
 }

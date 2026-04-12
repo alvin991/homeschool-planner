@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useMutation, useQuery } from '@apollo/client/react';
 import apolloClient from '@/utils/apolloClient';
 import {
@@ -17,8 +17,15 @@ export type CourseFormMetaData = {
   publishers: PublisherType[];
 };
 
+export type CourseFieldErrorKey =
+  | 'title'
+  | 'publisherName'
+  | 'grade'
+  | 'subjectName'
+  | 'subjectColor';
+
 export function useCourseForm(course?: CourseType | null) {
-  const { setSelectedCourse, setFormMode } = useCoursesUI();
+  const { registerCourseFlush } = useCoursesUI();
 
   const [title, setTitle] = useState(course?.title ?? '');
   const [publisherName, setPublisherName] = useState(course?.publisher?.name ?? '');
@@ -26,6 +33,9 @@ export function useCourseForm(course?: CourseType | null) {
   const [subjectName, setSubjectName] = useState(course?.subject?.name ?? '');
   const [subjectColor, setSubjectColor] = useState(course?.subject?.color ?? '');
   const [editMode, setEditMode] = useState<boolean>(false);
+  const [courseFieldErrors, setCourseFieldErrors] = useState<
+    Partial<Record<CourseFieldErrorKey, boolean>>
+  >({});
 
   const { data: metaData } = useQuery<CourseFormMetaData>(GET_COURSE_FORM_META, {
     client: apolloClient,
@@ -48,47 +58,106 @@ export function useCourseForm(course?: CourseType | null) {
     if (subject) setSubjectColor(subject.color);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !title.trim() ||
-      !publisherName.trim() ||
-      !grade.trim() ||
-      !subjectName.trim() ||
-      !subjectColor.trim()
-    ) {
-      console.warn('Missing required fields');
-      return;
+  /**
+   * Mandatory: title, publisher, grade, subject (name + color so saves match GraphQL input).
+   */
+  const validateAndHighlight = useCallback((): boolean => {
+    const next: Partial<Record<CourseFieldErrorKey, boolean>> = {};
+    if (!title.trim()) next.title = true;
+    if (!publisherName.trim()) next.publisherName = true;
+    if (!grade.trim()) next.grade = true;
+    if (!subjectName.trim()) {
+      next.subjectName = true;
+      next.subjectColor = true;
+    } else if (!subjectColor.trim()) {
+      next.subjectColor = true;
     }
+    setCourseFieldErrors(next);
+    return Object.keys(next).length === 0;
+  }, [title, publisherName, grade, subjectName, subjectColor]);
 
+  const persistCourse = useCallback(async (): Promise<boolean> => {
+    const input = {
+      title: title.trim(),
+      grade: grade.trim(),
+      publisherName: publisherName.trim(),
+      subjectName: subjectName.trim(),
+      subjectColor: subjectColor.trim(),
+    };
     try {
-      const input = {
-        title: title.trim(),
-        grade: grade.trim(),
-        publisherName: publisherName.trim(),
-        subjectName: subjectName.trim(),
-        subjectColor: subjectColor.trim(),
-      };
-
       if (course?._id) {
         await updateCourse({ variables: { id: course._id, input } });
       } else {
         await createCourse({ variables: { input } });
       }
-
-      // setSelectedCourse(null);
-      // setFormMode('course-list');
+      setCourseFieldErrors({});
       setEditMode(false);
+      return true;
     } catch (err) {
       console.error('Failed to save course', err);
+      return false;
     }
+  }, [
+    title,
+    grade,
+    publisherName,
+    subjectName,
+    subjectColor,
+    course?._id,
+    updateCourse,
+    createCourse,
+  ]);
+
+  const flushCourseChanges = useCallback(async (): Promise<boolean> => {
+    if (!editMode) {
+      setCourseFieldErrors({});
+      return true;
+    }
+    if (!validateAndHighlight()) return false;
+    return persistCourse();
+  }, [editMode, validateAndHighlight, persistCourse]);
+
+  useLayoutEffect(() => {
+    registerCourseFlush(flushCourseChanges);
+    return () => registerCourseFlush(null);
+  }, [registerCourseFlush, flushCourseChanges]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateAndHighlight()) return;
+    await persistCourse(); // errors logged inside persistCourse; stay in edit on failure
   };
 
-  const handleCancel = () => {
-    // setSelectedCourse(null);
-    // setFormMode('course-list');
+  const handleCancel = useCallback(() => {
+    setTitle(course?.title ?? '');
+    setPublisherName(course?.publisher?.name ?? '');
+    setGrade(course?.grade ?? '');
+    setSubjectName(course?.subject?.name ?? '');
+    setSubjectColor(course?.subject?.color ?? '');
+    setCourseFieldErrors({});
     setEditMode(false);
-  };
+  }, [course]);
+
+  const clearFieldError = useCallback((key: CourseFieldErrorKey) => {
+    setCourseFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  // Re-sync fields only when switching courses. Listing course.title etc. would reset the form on every refetch and wipe view-mode state.
+  useEffect(() => {
+    setTitle(course?.title ?? '');
+    setPublisherName(course?.publisher?.name ?? '');
+    setGrade(course?.grade ?? '');
+    setSubjectName(course?.subject?.name ?? '');
+    setSubjectColor(course?.subject?.color ?? '');
+    setCourseFieldErrors({});
+    setEditMode(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: course?._id only
+  }, [course?._id]);
 
   return {
     title,
@@ -102,6 +171,8 @@ export function useCourseForm(course?: CourseType | null) {
     setSubjectColor,
     editMode,
     setEditMode,
+    courseFieldErrors,
+    clearFieldError,
     metaData,
     handleSubjectSelect,
     handleSubmit,

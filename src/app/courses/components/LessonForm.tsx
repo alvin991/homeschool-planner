@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import apolloClient from '@/utils/apolloClient';
 import type { CourseType, LessonType } from '../types';
@@ -13,10 +13,16 @@ export type LessonFormProps = {
   lesson: LessonType | null;
 };
 
+const titleErrClass = (invalid: boolean) =>
+  invalid
+    ? ' ring-2 ring-red-500 border-red-500'
+    : '';
+
 export default function LessonForm({ course, lesson }: LessonFormProps) {
   const [title, setTitle] = useState(() => lesson?.title ?? '');
   const [description, setDescription] = useState(() => lesson?.note ?? '');
   const [content, setContent] = useState(() => lesson?.content ?? '');
+  const [titleError, setTitleError] = useState(false);
   const {
     cancelDraftItem,
     commitDraftItem,
@@ -25,6 +31,8 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
     selectedLessonTreeId,
     setSelectedLessonTreeId,
     lessonTreeUi,
+    registerDetailFlush,
+    runCourseFlush,
   } = useCoursesUI();
 
   const isViewMode = formMode === 'lesson-view';
@@ -40,16 +48,8 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
     awaitRefetchQueries: true,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isViewMode) return;
-    if (!title.trim()) {
-      console.warn('Title is required');
-      return;
-    }
-
+  const persistLessonToServer = useCallback(async (): Promise<boolean> => {
     const tree = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
-
     try {
       if (formMode === 'lesson-edit' && lesson) {
         const overrides = {
@@ -65,7 +65,9 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
             lessonTree: treeDataToLessonTreeJson(tree, course, overrides),
           },
         });
-      } else if (formMode === 'lesson-new' && selectedLessonTreeId) {
+        return true;
+      }
+      if (formMode === 'lesson-new' && selectedLessonTreeId) {
         const overrides = {
           [selectedLessonTreeId]: {
             title: title.trim(),
@@ -79,17 +81,69 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
             lessonTree: treeDataToLessonTreeJson(tree, course, overrides),
           },
         });
-      } else {
-        console.warn('Cannot save lesson: missing selection');
-        return;
+        return true;
       }
-      commitDraftItem();
+      return false;
     } catch (err) {
       console.error('Failed to save lesson', err);
+      return false;
     }
+  }, [
+    formMode,
+    lesson,
+    selectedLessonTreeId,
+    title,
+    content,
+    description,
+    course,
+    lessonTreeUi,
+    updateCourseLessonTree,
+  ]);
+
+  const flushLessonChanges = useCallback(async (): Promise<boolean> => {
+    if (isViewMode) return true;
+    if (formMode !== 'lesson-edit' && formMode !== 'lesson-new') return true;
+    if (!title.trim()) {
+      setTitleError(true);
+      return false;
+    }
+    setTitleError(false);
+    return persistLessonToServer();
+  }, [isViewMode, formMode, title, persistLessonToServer]);
+
+  useLayoutEffect(() => {
+    registerDetailFlush(flushLessonChanges);
+    return () => registerDetailFlush(null);
+  }, [registerDetailFlush, flushLessonChanges]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isViewMode) return;
+    if (!title.trim()) {
+      setTitleError(true);
+      return;
+    }
+    setTitleError(false);
+    if (!(await persistLessonToServer())) {
+      console.warn('Cannot save lesson: missing selection or save failed');
+      return;
+    }
+    commitDraftItem();
   };
 
   const handleCancel = () => {
+    setTitleError(false);
+    if (formMode === 'lesson-new') {
+      cancelDraftItem();
+      return;
+    }
+    if (formMode === 'lesson-edit' && lesson) {
+      setTitle(lesson.title);
+      setDescription(lesson.note ?? '');
+      setContent(lesson.content ?? '');
+      setFormMode('lesson-view');
+      return;
+    }
     cancelDraftItem();
   };
 
@@ -141,6 +195,9 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
     }
   };
 
+  const baseField =
+    'mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ';
+
   return (
     <div className="flex justify-center h-full p-6">
       <form
@@ -153,17 +210,28 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Title
+            {!isViewMode ? <span className="text-red-600"> *</span> : null}
           </label>
           <input
             value={title}
             readOnly={isViewMode}
-            onChange={(e) => setTitle(e.target.value)}
+            aria-invalid={!isViewMode && titleError}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setTitleError(false);
+            }}
             placeholder="The name of this scheduled item"
             className={
-              'mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ' +
-              (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50')
+              baseField +
+              (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50') +
+              titleErrClass(!isViewMode && titleError)
             }
           />
+          {!isViewMode && titleError ? (
+            <p className="mt-1 text-xs text-red-600" role="alert">
+              Title is required.
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-gray-400">
             The name of this scheduled item
           </p>
@@ -180,7 +248,7 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
             placeholder="Describe what students will learn or do..."
             rows={3}
             className={
-              'mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ' +
+              baseField +
               (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50')
             }
           />
@@ -200,7 +268,8 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
             placeholder="Add content, instructions, or notes..."
             rows={8}
             className={
-              'mt-1 block w-full rounded-lg border-gray-200 px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ' +
+              baseField +
+              ' py-3 ' +
               (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50')
             }
           />
@@ -222,7 +291,12 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
               <button
                 type="button"
                 className="btn border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
-                onClick={() => setFormMode('lesson-edit')}
+                onClick={() => {
+                  void (async () => {
+                    if (!(await runCourseFlush())) return;
+                    setFormMode('lesson-edit');
+                  })();
+                }}
               >
                 Edit
               </button>

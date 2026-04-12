@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import apolloClient from '@/utils/apolloClient';
 import type { CourseType } from '../types';
@@ -16,6 +16,9 @@ export type FolderFormProps = {
   course: CourseType;
 };
 
+const titleErrClass = (invalid: boolean) =>
+  invalid ? ' ring-2 ring-red-500 border-red-500' : '';
+
 export default function FolderForm({ course }: FolderFormProps) {
   const {
     cancelDraftItem,
@@ -25,6 +28,8 @@ export default function FolderForm({ course }: FolderFormProps) {
     selectedLessonTreeId,
     setSelectedLessonTreeId,
     lessonTreeUi,
+    registerDetailFlush,
+    runCourseFlush,
   } = useCoursesUI();
 
   const isViewMode = formMode === 'folder-view';
@@ -39,7 +44,14 @@ export default function FolderForm({ course }: FolderFormProps) {
     ? findItem(tree, selectedLessonTreeId)
     : null;
 
+  /** Persisted outline (server snapshot) for reverting edits on Cancel. */
+  const persistedFolderNode = useMemo(() => {
+    if (!selectedLessonTreeId) return null;
+    return findItem(apiTreeToTreeData(course.lessonTree ?? []), selectedLessonTreeId);
+  }, [course.lessonTree, selectedLessonTreeId]);
+
   const [title, setTitle] = useState(() => node?.title ?? '');
+  const [titleError, setTitleError] = useState(false);
 
   const [updateCourseLessonTree, { loading }] = useMutation(UPDATE_COURSE_LESSON_TREE, {
     client: apolloClient,
@@ -47,18 +59,9 @@ export default function FolderForm({ course }: FolderFormProps) {
     awaitRefetchQueries: true,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isViewMode) return;
-    if (!title.trim()) {
-      console.warn('Folder name is required');
-      return;
-    }
-    if (!selectedLessonTreeId) {
-      console.warn('No folder selected');
-      return;
-    }
-
+  const persistFolderToServer = useCallback(async (): Promise<boolean> => {
+    if (!selectedLessonTreeId) return false;
+    const treeNow = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
     try {
       const overrides = {
         [selectedLessonTreeId]: { title: title.trim() },
@@ -66,16 +69,59 @@ export default function FolderForm({ course }: FolderFormProps) {
       await updateCourseLessonTree({
         variables: {
           id: course._id,
-          lessonTree: treeDataToLessonTreeJson(tree, course, overrides),
+          lessonTree: treeDataToLessonTreeJson(treeNow, course, overrides),
         },
       });
-      commitDraftItem();
+      return true;
     } catch (err) {
       console.error('Failed to save folder', err);
+      return false;
     }
+  }, [selectedLessonTreeId, title, course, lessonTreeUi, updateCourseLessonTree]);
+
+  const flushFolderChanges = useCallback(async (): Promise<boolean> => {
+    if (isViewMode) return true;
+    if (formMode !== 'folder-edit' && formMode !== 'folder-new') return true;
+    if (!title.trim()) {
+      setTitleError(true);
+      return false;
+    }
+    setTitleError(false);
+    return persistFolderToServer();
+  }, [isViewMode, formMode, title, persistFolderToServer]);
+
+  useLayoutEffect(() => {
+    registerDetailFlush(flushFolderChanges);
+    return () => registerDetailFlush(null);
+  }, [registerDetailFlush, flushFolderChanges]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isViewMode) return;
+    if (!title.trim()) {
+      setTitleError(true);
+      return;
+    }
+    if (!selectedLessonTreeId) {
+      console.warn('No folder selected');
+      return;
+    }
+
+    const ok = await persistFolderToServer();
+    if (ok) commitDraftItem();
   };
 
   const handleCancel = () => {
+    setTitleError(false);
+    if (formMode === 'folder-new') {
+      cancelDraftItem();
+      return;
+    }
+    if (formMode === 'folder-edit' && persistedFolderNode?.type === 'folder') {
+      setTitle(persistedFolderNode.title);
+      setFormMode('folder-view');
+      return;
+    }
     cancelDraftItem();
   };
 
@@ -104,9 +150,9 @@ export default function FolderForm({ course }: FolderFormProps) {
       return;
     }
 
-    const tree = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
+    const t = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
     const nextTree = removeTreeItemHoistingFolderChildrenToRoot(
-      tree,
+      t,
       selectedLessonTreeId,
     );
     if (!nextTree) {
@@ -134,6 +180,9 @@ export default function FolderForm({ course }: FolderFormProps) {
         ? 'Folder'
         : 'Edit Folder';
 
+  const baseInput =
+    'mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ';
+
   return (
     <div className="flex h-full w-full justify-center p-6">
       <form
@@ -144,17 +193,28 @@ export default function FolderForm({ course }: FolderFormProps) {
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Folder name
+            {!isViewMode ? <span className="text-red-600"> *</span> : null}
           </label>
           <input
             value={title}
             readOnly={isViewMode}
-            onChange={(e) => setTitle(e.target.value)}
+            aria-invalid={!isViewMode && titleError}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setTitleError(false);
+            }}
             placeholder="e.g. Unit 1"
             className={
-              'mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 ' +
-              (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50')
+              baseInput +
+              (isViewMode ? 'cursor-default bg-gray-100 text-gray-900' : 'bg-gray-50') +
+              titleErrClass(!isViewMode && titleError)
             }
           />
+          {!isViewMode && titleError ? (
+            <p className="mt-1 text-xs text-red-600" role="alert">
+              Folder name is required.
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
@@ -170,7 +230,12 @@ export default function FolderForm({ course }: FolderFormProps) {
               <button
                 type="button"
                 className="btn border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
-                onClick={() => setFormMode('folder-edit')}
+                onClick={() => {
+                  void (async () => {
+                    if (!(await runCourseFlush())) return;
+                    setFormMode('folder-edit');
+                  })();
+                }}
               >
                 Edit
               </button>
