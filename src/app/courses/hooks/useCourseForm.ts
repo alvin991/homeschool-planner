@@ -37,10 +37,13 @@ export function useCourseForm(course?: CourseType | null) {
     Partial<Record<CourseFieldErrorKey, boolean>>
   >({});
 
-  const { data: metaData } = useQuery<CourseFormMetaData>(GET_COURSE_FORM_META, {
-    client: apolloClient,
-    fetchPolicy: 'cache-first',
-  });
+  const { data: metaData, loading: metaLoading } = useQuery<CourseFormMetaData>(
+    GET_COURSE_FORM_META,
+    {
+      client: apolloClient,
+      fetchPolicy: 'cache-first',
+    },
+  );
 
   const [createCourse] = useMutation(CREATE_COURSE, {
     client: apolloClient,
@@ -54,8 +57,20 @@ export function useCourseForm(course?: CourseType | null) {
 
   const handleSubjectSelect = (name: string) => {
     setSubjectName(name);
+    if (!name.trim()) {
+      setSubjectColor('');
+      return;
+    }
     const subject = metaData?.subjects.find((s) => s.name === name);
-    if (subject) setSubjectColor(subject.color);
+    if (subject) {
+      setSubjectColor(subject.color);
+      return;
+    }
+    if (course?.subject?.name === name) {
+      setSubjectColor(course.subject.color ?? '');
+      return;
+    }
+    setSubjectColor('');
   };
 
   /**
@@ -174,6 +189,7 @@ export function useCourseForm(course?: CourseType | null) {
     courseFieldErrors,
     clearFieldError,
     metaData,
+    metaLoading,
     handleSubjectSelect,
     handleSubmit,
     handleCancel,
