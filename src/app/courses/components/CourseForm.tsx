@@ -58,6 +58,8 @@ export default function CourseForm({ course }: CourseFormNewProps) {
     subjectName,
     subjectColor,
     editMode,
+    isSaving,
+    saveNotice,
     setEditMode,
     courseFieldErrors,
     clearFieldError,
@@ -122,6 +124,18 @@ export default function CourseForm({ course }: CourseFormNewProps) {
       }}
     >
       <form className="w-full bg-white rounded-lg p-6 space-y-4" onSubmit={handleSubmit}>
+        {saveNotice ? (
+          <div
+            className={`rounded-md px-3 py-2 text-sm ${
+              saveNotice.tone === 'success'
+                ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border border-red-200 bg-red-50 text-red-800'
+            }`}
+            role={saveNotice.tone === 'error' ? 'alert' : 'status'}
+          >
+            {saveNotice.text}
+          </div>
+        ) : null}
         {!editMode && (
           <>
             <p className="text-xs text-gray-500">
@@ -236,13 +250,19 @@ export default function CourseForm({ course }: CourseFormNewProps) {
               <div className="flex justify-end gap-2 pt-4">
                 <button
                   type="button"
-                  className="btn btn-ghost border border-gray-300"
+                  className={`btn btn-ghost border border-gray-300 ${isSaving ? 'cursor-not-allowed opacity-60' : ''}`}
                   onClick={handleCancel}
+                  disabled={isSaving}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-ghost border border-gray-300">
-                  Save
+                <button
+                  type="submit"
+                  className={`btn btn-ghost border border-gray-300 ${isSaving ? 'cursor-not-allowed opacity-60' : ''}`}
+                  disabled={isSaving}
+                  aria-disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>

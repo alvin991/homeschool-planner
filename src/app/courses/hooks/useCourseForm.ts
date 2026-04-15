@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@apollo/client/react';
 import apolloClient from '@/utils/apolloClient';
 import {
@@ -17,6 +17,15 @@ export type CourseFormMetaData = {
   publishers: PublisherType[];
 };
 
+type CreateCourseMutationData = {
+  createCourse?: Omit<CourseType, 'lessonTree' | 'lessonCount'>;
+};
+
+type SaveNotice = {
+  tone: 'success' | 'error';
+  text: string;
+};
+
 export type CourseFieldErrorKey =
   | 'title'
   | 'publisherName'
@@ -25,17 +34,20 @@ export type CourseFieldErrorKey =
   | 'subjectColor';
 
 export function useCourseForm(course?: CourseType | null) {
-  const { registerCourseFlush } = useCoursesUI();
+  const { registerCourseFlush, resetToCourseList, setSelectedCourse, setFormMode } = useCoursesUI();
+  const isSavingRef = useRef(false);
 
   const [title, setTitle] = useState(course?.title ?? '');
   const [publisherName, setPublisherName] = useState(course?.publisher?.name ?? '');
   const [grade, setGrade] = useState(course?.grade ?? '');
   const [subjectName, setSubjectName] = useState(course?.subject?.name ?? '');
   const [subjectColor, setSubjectColor] = useState(course?.subject?.color ?? '');
-  const [editMode, setEditMode] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(() => !course?._id);
   const [courseFieldErrors, setCourseFieldErrors] = useState<
     Partial<Record<CourseFieldErrorKey, boolean>>
   >({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<SaveNotice | null>(null);
 
   const { data: metaData, loading: metaLoading } = useQuery<CourseFormMetaData>(
     GET_COURSE_FORM_META,
@@ -92,6 +104,10 @@ export function useCourseForm(course?: CourseType | null) {
   }, [title, publisherName, grade, subjectName, subjectColor]);
 
   const persistCourse = useCallback(async (): Promise<boolean> => {
+    if (isSavingRef.current) return false;
+    isSavingRef.current = true;
+    setIsSaving(true);
+    setSaveNotice(null);
     const input = {
       title: title.trim(),
       grade: grade.trim(),
@@ -102,15 +118,36 @@ export function useCourseForm(course?: CourseType | null) {
     try {
       if (course?._id) {
         await updateCourse({ variables: { id: course._id, input } });
+        setSaveNotice({ tone: 'success', text: 'Course updated.' });
       } else {
-        await createCourse({ variables: { input } });
+        const { data } = await createCourse({ variables: { input } });
+        const typedData = data as CreateCourseMutationData | undefined;
+        const createdCourse = typedData?.createCourse;
+        if (createdCourse?._id) {
+          setSelectedCourse({
+            ...createdCourse,
+            lessonTree: [],
+            lessonCount: 0,
+          });
+          setFormMode('course-edit');
+          setSaveNotice({ tone: 'success', text: 'Course created.' });
+        } else {
+          setSaveNotice({ tone: 'error', text: 'Save failed: no course returned from server.' });
+          return false;
+        }
       }
       setCourseFieldErrors({});
+      // After save (create or update), return to view mode.
       setEditMode(false);
       return true;
     } catch (err) {
       console.error('Failed to save course', err);
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setSaveNotice({ tone: 'error', text: `Save failed: ${message}` });
       return false;
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   }, [
     title,
@@ -121,6 +158,8 @@ export function useCourseForm(course?: CourseType | null) {
     course?._id,
     updateCourse,
     createCourse,
+    setSelectedCourse,
+    setFormMode,
   ]);
 
   const flushCourseChanges = useCallback(async (): Promise<boolean> => {
@@ -144,6 +183,10 @@ export function useCourseForm(course?: CourseType | null) {
   };
 
   const handleCancel = useCallback(() => {
+    if (!course?._id) {
+      resetToCourseList();
+      return;
+    }
     setTitle(course?.title ?? '');
     setPublisherName(course?.publisher?.name ?? '');
     setGrade(course?.grade ?? '');
@@ -151,7 +194,7 @@ export function useCourseForm(course?: CourseType | null) {
     setSubjectColor(course?.subject?.color ?? '');
     setCourseFieldErrors({});
     setEditMode(false);
-  }, [course]);
+  }, [course, resetToCourseList]);
 
   const clearFieldError = useCallback((key: CourseFieldErrorKey) => {
     setCourseFieldErrors((prev) => {
@@ -170,9 +213,18 @@ export function useCourseForm(course?: CourseType | null) {
     setSubjectName(course?.subject?.name ?? '');
     setSubjectColor(course?.subject?.color ?? '');
     setCourseFieldErrors({});
-    setEditMode(false);
+    setSaveNotice(null);
+    setEditMode(!course?._id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: course?._id only
   }, [course?._id]);
+
+  useEffect(() => {
+    if (!saveNotice) return;
+    const timer = setTimeout(() => {
+      setSaveNotice(null);
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [saveNotice]);
 
   return {
     title,
@@ -185,6 +237,8 @@ export function useCourseForm(course?: CourseType | null) {
     subjectColor,
     setSubjectColor,
     editMode,
+    isSaving,
+    saveNotice,
     setEditMode,
     courseFieldErrors,
     clearFieldError,

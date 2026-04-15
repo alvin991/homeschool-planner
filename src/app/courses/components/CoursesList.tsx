@@ -9,11 +9,33 @@ type CoursesListProps = {
 };
 
 function CoursesList({ courses, handleCourseClick }: CoursesListProps) {
+  const { setFormMode, setSelectedCourse, setSelectedLessonTreeId } = useCoursesUI();
+  const handleAddCourse = () => {
+    setSelectedLessonTreeId(null);
+    setFormMode('course-new');
+    setSelectedCourse({
+      _id: '',
+      title: '',
+      grade: '',
+      publisher: { _id: '', name: '' },
+      subject: { _id: '', name: '', color: '' },
+      lessonTree: [],
+    });
+  };
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Course List</h1>
-      <CoursesHeader />
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Courses</h1>
+        <button
+          type="button"
+          onClick={handleAddCourse}
+          className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+        >
+          Add Course
+        </button>
+      </div>
+      {/* <CoursesHeader /> */}
       {courses &&
         courses.length > 0 &&
         courses.map((course) => (

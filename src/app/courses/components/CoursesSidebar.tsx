@@ -32,6 +32,22 @@ export default function CoursesSidebar() {
     return <nav>Choose a course to see details</nav>;
   }
 
+  const isNewCourse = formMode === 'course-new' || !courseForSidebar._id;
+  if (isNewCourse) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex justify-between items-center border-b border-gray-300 gap-2 pb-4">
+          <h1 className="text-xl font-semibold text-gray-800">📚️ Lessons</h1>
+        </div>
+        <div className="flex flex-1 items-center justify-center px-4 text-center">
+          <p className="text-sm text-gray-500">
+            Save the new course first to enable lessons and folders.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const isLocked = formMode === 'lesson-new' || formMode === 'folder-new';
 
   // console.log(`selectedCourse ${JSON.stringify(selectedCourse, null, 2)}`)
