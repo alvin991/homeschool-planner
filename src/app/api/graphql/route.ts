@@ -325,7 +325,7 @@ const resolvers = {
 
 const apolloServer = new ApolloServer({ typeDefs, resolvers });
 
-export const POST = startServerAndCreateNextHandler<NextRequest>(apolloServer, {
+const graphqlHandler = startServerAndCreateNextHandler<NextRequest>(apolloServer, {
   context: async () => {
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(
@@ -336,3 +336,11 @@ export const POST = startServerAndCreateNextHandler<NextRequest>(apolloServer, {
     return {};
   },
 });
+
+/** App Router requires `(req, context)`; Apollo handler is `(req)` only. */
+export async function POST(
+  request: NextRequest,
+  _context: { params: Promise<Record<string, never>> },
+) {
+  return graphqlHandler(request);
+}
