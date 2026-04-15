@@ -1,5 +1,6 @@
 import CoursesHeader from "./CoursesHeader";
 import CourseCard from "./CourseCard";
+import { useMemo, useState } from 'react';
 import type { CourseType } from '../types';
 import { useCoursesUI } from '../CoursesUIContext';
 
@@ -10,6 +11,9 @@ type CoursesListProps = {
 
 function CoursesList({ courses, handleCourseClick }: CoursesListProps) {
   const { setFormMode, setSelectedCourse, setSelectedLessonTreeId } = useCoursesUI();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortAscending, setSortAscending] = useState(true);
+
   const handleAddCourse = () => {
     setSelectedLessonTreeId(null);
     setFormMode('course-new');
@@ -21,6 +25,37 @@ function CoursesList({ courses, handleCourseClick }: CoursesListProps) {
       subject: { _id: '', name: '', color: '' },
       lessonTree: [],
     });
+  };
+
+  const visibleCourses = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = !query
+      ? courses
+      : courses.filter((course) => {
+          const gradeValue = (course.grade ?? '').toString().trim().toLowerCase();
+          const normalizedGradeTerm = gradeValue ? `grade ${gradeValue}` : '';
+          const haystack = [
+            course.title,
+            course.publisher?.name,
+            course.subject?.name,
+            gradeValue,
+            normalizedGradeTerm,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          return haystack.includes(query);
+        });
+
+    const sorted = [...filtered].sort((a, b) => {
+      const diff = a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+      return sortAscending ? diff : -diff;
+    });
+    return sorted;
+  }, [courses, searchQuery, sortAscending]);
+
+  const handleToggleSort = () => {
+    setSortAscending((prev) => !prev);
   };
 
   return (
@@ -35,10 +70,15 @@ function CoursesList({ courses, handleCourseClick }: CoursesListProps) {
           Add Course
         </button>
       </div>
-      {/* <CoursesHeader /> */}
-      {courses &&
-        courses.length > 0 &&
-        courses.map((course) => (
+      <CoursesHeader
+        onSearchChange={setSearchQuery}
+        sortAscending={sortAscending}
+        onToggleSort={handleToggleSort}
+      />
+      {visibleCourses.length === 0 ? (
+        <p className="text-sm text-gray-500">No courses match your search.</p>
+      ) : (
+        visibleCourses.map((course) => (
           <div
             key={course._id}
             className="mb-4"
@@ -46,7 +86,8 @@ function CoursesList({ courses, handleCourseClick }: CoursesListProps) {
           >
             <CourseCard course={course} />
           </div>
-        ))}
+        ))
+      )}
     </div>
   );
 }

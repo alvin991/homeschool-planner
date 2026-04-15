@@ -9,19 +9,14 @@ const CourseCard: React.FC<{ course: CourseType }> = ({ course }) => {
   return (
     <div className={styles.card}>
       <div className={styles.flexCol}>
-        <div>
-          <div className={styles.title}>
-            {course.title}
-          </div>
-          <div className={styles.publisher}>
-            {course.publisher.name}
-          </div>
-        </div>
-        <div className={styles.lessonInfoContainer}>
-          <div className={styles.lessonInfoRow}>
-            <span className={styles.publisher}>
+        <div className={styles.title}>{course.title}</div>
+        <div className={styles.metaRow}>
+          <div className={styles.publisher}>{course.publisher.name}</div>
+          <div className={styles.metaRight}>
+            <span className={styles.metaText}>
               {lessonTotal} lesson{lessonTotal !== 1 ? 's' : ''}
             </span>
+            <span className={styles.metaText}>Grade {course.grade || 'N/A'}</span>
             {(() => {
               // Use CSS variables instead of dynamic Tailwind classes.
               // Map a small set of semantic names to hex values.
@@ -56,6 +51,6 @@ const CourseCard: React.FC<{ course: CourseType }> = ({ course }) => {
       </div>
     </div>
   );
-}
+};
 
 export default CourseCard;
