@@ -76,7 +76,11 @@ function CoursesList({ courses, handleCourseClick }: CoursesListProps) {
         onToggleSort={handleToggleSort}
       />
       {visibleCourses.length === 0 ? (
-        <p className="text-sm text-gray-500">No courses match your search.</p>
+        <p className="text-sm text-gray-500">
+          {courses.length === 0
+            ? 'No courses yet. Add one with the button above, or check that this app can reach your database.'
+            : 'No courses match your search.'}
+        </p>
       ) : (
         visibleCourses.map((course) => (
           <div
