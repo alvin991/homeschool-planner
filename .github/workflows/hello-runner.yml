@@ -1,0 +1,15 @@
+name: Test self-hosted runner
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  hello:
+    runs-on: self-hosted
+    steps:
+      - name: Show user
+        run: whoami
+
+      - name: Docker version
+        run: docker version
