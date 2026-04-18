@@ -1,0 +1,52 @@
+# Production stack (self-hosted / server). Builds the Next.js "runner" image and runs Mongo on the same Docker network.
+#
+# Your existing docker-compose.yaml stays for Dev Containers / local dev (deps target, bind mounts).
+#
+# Before first deploy on the runner host:
+#   1) Create the shared network once:  docker network create homeschool-net
+#   2) Put production secrets in a .env file ON THE SERVER (not in git). Point GitHub repo variable
+#      DEPLOY_ENV_FILE at that absolute path (Windows example: C:/Users/you/config/homeschool-planner.env).
+#      The file should include MONGODB_URI using host "db" (this compose service name), e.g.:
+#        MONGODB_URI=mongodb://homeschool_user:homeschool_password@db:27017/homeschool_planner?authSource=admin
+#
+# Deploy manually on the host:
+#   set DEPLOY_ENV_FILE=C:/path/to/your.env
+#   docker compose -f docker-compose.prod.yaml up -d --build
+
+services:
+  db:
+    image: mongo:7
+    container_name: homeschool-planner-mongo-prod
+    restart: unless-stopped
+    networks:
+      - homeschool-net
+    environment:
+      MONGO_INITDB_DATABASE: homeschool_planner
+      MONGO_INITDB_ROOT_USERNAME: homeschool_user
+      MONGO_INITDB_ROOT_PASSWORD: homeschool_password
+    volumes:
+      - db_data_prod:/data/db
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    image: homeschool-planner:local
+    container_name: homeschool-app
+    restart: unless-stopped
+    networks:
+      - homeschool-net
+    ports:
+      - "3001:3000"
+    depends_on:
+      - db
+    env_file:
+      - ${DEPLOY_ENV_FILE:-.env}
+
+volumes:
+  db_data_prod:
+
+networks:
+  homeschool-net:
+    external: true
