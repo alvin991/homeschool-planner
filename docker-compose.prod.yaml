@@ -6,8 +6,7 @@
 #   1) Create the shared network once:  docker network create homeschool-net
 #   2) Put production secrets in a .env file ON THE SERVER (not in git). Point GitHub repo variable
 #      DEPLOY_ENV_FILE at that absolute path (Windows example: C:/Users/you/config/homeschool-planner.env).
-#      The file should include MONGODB_URI using host "db" (this compose service name), e.g.:
-#        MONGODB_URI=mongodb://homeschool_user:homeschool_password@db:27017/homeschool_planner?authSource=admin
+#      That file must define MONGODB_URI (host "db") and MONGO_INITDB_* for Mongo first boot — see .env.example.
 #
 # Deploy manually on the host:
 #   set DEPLOY_ENV_FILE=C:/path/to/your.env
@@ -20,10 +19,8 @@ services:
     restart: unless-stopped
     networks:
       - homeschool-net
-    environment:
-      MONGO_INITDB_DATABASE: homeschool_planner
-      MONGO_INITDB_ROOT_USERNAME: homeschool_user
-      MONGO_INITDB_ROOT_PASSWORD: homeschool_password
+    env_file:
+      - ${DEPLOY_ENV_FILE:-.env}
     volumes:
       - db_data_prod:/data/db
 

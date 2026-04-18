@@ -328,10 +328,11 @@ const apolloServer = new ApolloServer({ typeDefs, resolvers });
 const graphqlHandler = startServerAndCreateNextHandler<NextRequest>(apolloServer, {
   context: async () => {
     if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(
-        process.env.MONGODB_URI ||
-          'mongodb://homeschool_user:homeschool_password@db:27017/homeschool_planner?authSource=admin',
-      );
+      const uri = process.env.MONGODB_URI;
+      if (!uri) {
+        throw new Error('Missing MONGODB_URI in environment (.env for local dev).');
+      }
+      await mongoose.connect(uri);
     }
     return {};
   },

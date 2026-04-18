@@ -1,10 +1,10 @@
-
 import mongoose, { Mongoose } from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://homeschool_user:homeschool_password@db:27017/homeschool_planner';
-
+const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable');
+  throw new Error(
+    'Missing MONGODB_URI. Add it to .env (see .env.example). Next.js loads .env automatically for dev and build.',
+  );
 }
 
 declare global {

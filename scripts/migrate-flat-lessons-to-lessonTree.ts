@@ -2,14 +2,19 @@
  * If courses still have a flat embedded `lessons` array (legacy), convert to `lessonTree`
  * as a single-level list of `{ kind: 'lesson', ... }` nodes, then `$unset` `lessons`.
  *
- * Run: `npx tsx scripts/migrate-flat-lessons-to-lessonTree.ts`
+ * Run from repo root (loads .env via dotenv):
+ *   npx tsx scripts/migrate-flat-lessons-to-lessonTree.ts
  */
+import 'dotenv/config';
 import mongoose from 'mongoose';
 
 async function main() {
-  const uri =
-    process.env.MONGODB_URI ||
-    'mongodb://homeschool_user:homeschool_password@db:27017/homeschool_planner?authSource=admin';
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error(
+      'Missing MONGODB_URI. Set it in .env at the repo root (same as Next.js).',
+    );
+  }
   await mongoose.connect(uri);
 
   const db = mongoose.connection.db!;
