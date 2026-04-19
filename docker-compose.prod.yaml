@@ -1,29 +1,21 @@
-# Production stack (self-hosted / server). Builds the Next.js "runner" image and runs Mongo on the same Docker network.
+# Production: Next.js app only. MongoDB runs separately (e.g. container name `homeschool-mongo` on `homeschool-net`).
 #
-# Your existing docker-compose.yaml stays for Dev Containers / local dev (deps target, bind mounts).
+# How env_file works:
+# - The path is resolved when you run `docker compose` (relative to this compose file, unless absolute).
+# - ${DEPLOY_ENV_FILE:-.env} is substituted from the **host shell environment** (GitHub Actions sets DEPLOY_ENV_FILE).
+# - Compose reads that file and injects its KEY=value pairs as **environment variables inside the app container**.
+#   It does NOT bake them into the Docker image build; the image is built separately, then the container starts with this env.
 #
-# Before first deploy on the runner host:
-#   1) Create the shared network once:  docker network create homeschool-net
-#   2) Put production secrets in a .env file ON THE SERVER (not in git). Point GitHub repo variable
-#      DEPLOY_ENV_FILE at that absolute path (Windows example: C:/Users/you/config/homeschool-planner.env).
-#      That file must define MONGODB_URI (host "db") and MONGO_INITDB_* for Mongo first boot — see .env.example.
+# Requirements:
+# - Network `homeschool-net` must exist, and your Mongo container must be attached to it (e.g. `homeschool-mongo`).
+# - production.env (or whatever DEPLOY_ENV_FILE points to) must set MONGODB_URI using that hostname, e.g.:
+#     mongodb://user:pass@homeschool-mongo:27017/homeschool_planner?authSource=admin
 #
 # Deploy manually on the host:
-#   set DEPLOY_ENV_FILE=C:/path/to/your.env
+#   set DEPLOY_ENV_FILE=C:/path/to/production.env
 #   docker compose -f docker-compose.prod.yaml up -d --build
 
 services:
-  db:
-    image: mongo:7
-    container_name: homeschool-planner-mongo-prod
-    restart: unless-stopped
-    networks:
-      - homeschool-net
-    env_file:
-      - ${DEPLOY_ENV_FILE:-.env}
-    volumes:
-      - db_data_prod:/data/db
-
   app:
     build:
       context: .
@@ -36,13 +28,8 @@ services:
       - homeschool-net
     ports:
       - "3001:3000"
-    depends_on:
-      - db
     env_file:
       - ${DEPLOY_ENV_FILE:-.env}
-
-volumes:
-  db_data_prod:
 
 networks:
   homeschool-net:

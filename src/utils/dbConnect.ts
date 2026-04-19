@@ -1,14 +1,6 @@
 import mongoose, { Mongoose } from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  throw new Error(
-    'Missing MONGODB_URI. Add it to .env (see .env.example). Next.js loads .env automatically for dev and build.',
-  );
-}
-
 declare global {
-  // eslint-disable-next-line no-var
   var mongooseCache: {
     conn: Mongoose | null;
     promise: Promise<Mongoose> | null;
@@ -21,6 +13,16 @@ if (!cached) {
   cached = global.mongooseCache;
 }
 
+function requireMongoUri(): string {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error(
+      'Missing MONGODB_URI. Add it to .env (see .env.example). In Docker, set it via env_file / container env.',
+    );
+  }
+  return uri;
+}
+
 async function dbConnect() {
   if (!cached) {
     throw new Error('Mongoose cache is not initialized');
@@ -29,7 +31,7 @@ async function dbConnect() {
     return cached.conn;
   }
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+    cached.promise = mongoose.connect(requireMongoUri(), {
       bufferCommands: false,
     });
   }
