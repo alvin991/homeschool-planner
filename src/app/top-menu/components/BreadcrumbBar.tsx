@@ -8,6 +8,9 @@ import { useCoursesBreadcrumb } from '../CoursesBreadcrumbContext';
 const SEGMENT_LABELS: Record<string, string> = {
   courses: 'Courses',
   checklists: 'Checklists',
+  resources: 'Resources',
+  publishers: 'Publishers',
+  subjects: 'Subjects',
   sumsum: 'Sumsum',
   kaka: 'Kaka',
   testing: 'Testing',
