@@ -28,6 +28,13 @@ jobs:
             docker network create homeschool-net
           }
 
+      # Same fixed name as docker-compose.prod.yaml; remove leftover from manual `docker run` or old deploys.
+      - name: Remove previous app container (if any)
+        shell: powershell
+        run: |
+          docker rm -f homeschool-app 2>$null | Out-Null
+          exit 0
+
       - name: Build and deploy with Compose (prod)
         shell: powershell
         env:
