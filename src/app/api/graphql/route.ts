@@ -1,6 +1,7 @@
 import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import type { NextRequest } from 'next/server';
+<<<<<<< HEAD
 import mongoose, { Types } from 'mongoose';
 import Course, { ICourse } from '@/models/Course';
 import Subject from '@/models/Subject';
@@ -403,6 +404,10 @@ const resolvers = {
     },
   },
 };
+=======
+import mongoose from 'mongoose';
+import { resolvers, typeDefs } from '@/app/api/graphql/schema';
+>>>>>>> 1f7e096 (feat: add Resources UI for subjects/publishers; refactor GraphQL into modules)
 
 const apolloServer = new ApolloServer({ typeDefs, resolvers });
 
