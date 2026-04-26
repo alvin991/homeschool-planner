@@ -69,20 +69,27 @@ export default function CoursesSidebar() {
   };
 
   return (
-    <div className="relative">
-      <SidebarHeader onClickAddLesson={handleNewLessonClick} onClickAddFolder={handleNewFolderClick}/>
-      <LessonsList
-        key={`${courseForSidebar._id}-${lessonsListKey}`}
-        course={courseForSidebar}
-      />
+    <div className="relative flex h-full min-h-0 w-full flex-col">
+      <div className="shrink-0">
+        <SidebarHeader
+          onClickAddLesson={handleNewLessonClick}
+          onClickAddFolder={handleNewFolderClick}
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <LessonsList
+          key={`${courseForSidebar._id}-${lessonsListKey}`}
+          course={courseForSidebar}
+        />
+      </div>
 
       {/* Overlay: blocks interactions and shows not-allowed cursor */}
       {isLocked && (
-        <div className="absolute inset-0 bg-black/20 cursor-not-allowed z-10" />
+        <div className="absolute inset-0 z-10 cursor-not-allowed bg-black/20" />
       )}
       {/* Footer message at the bottom, above overlay */}
       {isLocked && (
-        <div className="absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 bg-amber-50 border-t border-amber-200 px-3 py-2 text-xs text-amber-900">
+        <div className="absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 border-t border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <span>
             🔒 Reordering is locked while creating a new lesson or folder.
           </span>

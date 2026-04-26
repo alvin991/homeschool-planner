@@ -218,7 +218,7 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
 
   return (
     // <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-    <div className="p-7"> 
+    <div className="min-h-0 p-7">
       {/* <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
         <input
           type="text"

@@ -23,7 +23,7 @@ export default function CoursesLayout({
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
       <CourseFormNewBar />
       <div className="flex min-h-0 flex-1">
-        <aside className="w-[26rem] shrink-0 border-r border-gray-200 bg-gray-50 p-4 relative">
+        <aside className="flex h-full min-h-0 w-[26rem] shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-gray-50 p-4">
           <CoursesSidebar />
         </aside>
         <main className="flex-1 min-h-0 overflow-y-auto p-6">{children}</main>
