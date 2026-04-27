@@ -6,6 +6,7 @@ import {
   useContext,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
 } from 'react';
 import type { CourseType, FormModeType } from './types';
@@ -38,6 +39,11 @@ type CoursesUIContextValue = {
   /** Latest outline from LessonsList (for LessonForm saves). */
   lessonTreeUi: TreeData | null;
   setLessonTreeUi: (tree: TreeData | null) => void;
+  /**
+   * Same tree as LessonsList `lessons` (layout sync + ref updated when inserting a draft row).
+   * Forms in `main` read this so saves never see a stale outline vs the sidebar.
+   */
+  lessonTreeSourceRef: MutableRefObject<TreeData | null>;
   /** Clear the pending add-lesson/add-folder signal (after LessonsList applies it, or defensively). */
   clearPendingTreeDraft: () => void;
   /**
@@ -79,6 +85,7 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
 
   const courseFlushRef = useRef<(() => Promise<boolean>) | null>(null);
   const detailFlushRef = useRef<(() => Promise<boolean>) | null>(null);
+  const lessonTreeSourceRef = useRef<TreeData | null>(null);
 
   const registerCourseFlush = useCallback((fn: (() => Promise<boolean>) | null) => {
     courseFlushRef.current = fn;
@@ -155,6 +162,7 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
     setDraftItemId(null);
     setDraftLessonCancelId(null);
     setLessonTreeUi(null);
+    lessonTreeSourceRef.current = null;
   }, []);
 
   return (
@@ -177,6 +185,7 @@ export function CoursesUIProvider({ children }: { children: ReactNode }) {
         commitDraftItem,
         lessonTreeUi,
         setLessonTreeUi,
+        lessonTreeSourceRef,
         clearPendingTreeDraft,
         markTreeDraftSeqConsumed,
         resetToCourseList,

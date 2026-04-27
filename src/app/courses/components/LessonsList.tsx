@@ -1,6 +1,6 @@
 "use client"; // Next.js App Router
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import apolloClient from '@/utils/apolloClient';
@@ -15,10 +15,9 @@ import { useCoursesUI } from '../CoursesUIContext';
 
 type LessonsListProps = {
   course: CourseType;
-  onNewLesson?: (lesson: TreeItem) => void;
 };
 
-export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
+export default function LessonsList({ course }: LessonsListProps) {
   const {
     setDraftItemId,
     draftLessonCancelRequestId,
@@ -31,7 +30,9 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     selectedLessonTreeId,
     setSelectedLessonTreeId,
     setLessonTreeUi,
+    lessonTreeSourceRef,
     runCourseFlush,
+    runDetailFlush,
   } = useCoursesUI();
   const [lessons, setLessons] = useState<TreeData>(() =>
     apiTreeToTreeData(course.lessonTree ?? []),
@@ -50,9 +51,11 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
   /** Serialize outline saves so overlapping drags / refetches cannot hit stale Mongoose versions. */
   const persistOutlineChainRef = useRef<Promise<void>>(Promise.resolve());
 
-  useEffect(() => {
+  /** Layout sync: ref + context match `lessons` before sibling forms run layout effects. */
+  useLayoutEffect(() => {
+    lessonTreeSourceRef.current = lessons;
     setLessonTreeUi(lessons);
-  }, [lessons, setLessonTreeUi]);
+  }, [lessons, lessonTreeSourceRef, setLessonTreeUi]);
 
   const persistLessonsFromTree = useCallback(
     async (nextTree: TreeData) => {
@@ -115,41 +118,46 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     queueMicrotask(() => {
       if (kind === 'lesson') {
         const id = `lesson-${Date.now()}`;
-        let newLesson: TreeItem | undefined;
         setLessons((prev) => {
-          newLesson = {
-            id,
-            type: 'lesson',
-            title: 'Untitled',
-            outlinePosition: maxOutlinePosition(prev) + 1,
-          };
-          return [...prev, newLesson];
+          if (prev.some((n) => n.id === id)) return prev;
+          const next: TreeData = [
+            ...prev,
+            {
+              id,
+              type: 'lesson',
+              title: 'Untitled',
+              outlinePosition: maxOutlinePosition(prev) + 1,
+            },
+          ];
+          lessonTreeSourceRef.current = next;
+          return next;
         });
-        if (!newLesson) return;
-        setSelectedId(newLesson.id);
+        setSelectedId(id);
         setPressedId(null);
-        setSelectedLessonTreeId(newLesson.id);
-        setDraftItemId(newLesson.id);
-        onNewLesson?.(newLesson);
+        setSelectedLessonTreeId(id);
+        setDraftItemId(id);
         return;
       }
       const folderId = `folder-${Date.now()}`;
-      let newFolder: TreeItem | undefined;
       setLessons((prev) => {
-        newFolder = {
-          id: folderId,
-          type: 'folder',
-          title: 'Untitled folder',
-          outlinePosition: maxOutlinePosition(prev) + 1,
-          children: [],
-        };
-        return [...prev, newFolder];
+        if (prev.some((n) => n.id === folderId)) return prev;
+        const next: TreeData = [
+          ...prev,
+          {
+            id: folderId,
+            type: 'folder',
+            title: 'Untitled folder',
+            outlinePosition: maxOutlinePosition(prev) + 1,
+            children: [],
+          },
+        ];
+        lessonTreeSourceRef.current = next;
+        return next;
       });
-      if (!newFolder) return;
-      setSelectedId(newFolder.id);
+      setSelectedId(folderId);
       setPressedId(null);
-      setSelectedLessonTreeId(newFolder.id);
-      setDraftItemId(newFolder.id);
+      setSelectedLessonTreeId(folderId);
+      setDraftItemId(folderId);
     });
   }, [
     pendingTreeDraft?.seq,
@@ -158,7 +166,7 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
     course._id,
     clearPendingTreeDraft,
     markTreeDraftSeqConsumed,
-    onNewLesson,
+    lessonTreeSourceRef,
     setDraftItemId,
     setSelectedLessonTreeId,
   ]);
@@ -188,8 +196,8 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
   const handleOnSelect = (id: string | null) => {
     void (async () => {
       if (id !== null) {
-        const ok = await runCourseFlush();
-        if (!ok) return;
+        if (!(await runDetailFlush())) return;
+        if (!(await runCourseFlush())) return;
       }
       setSelectedId(id);
       if (id === null) {
@@ -213,8 +221,8 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
 
   const handleRequestEdit = useCallback(
     async (id: string) => {
-      const ok = await runCourseFlush();
-      if (!ok) return;
+      if (!(await runDetailFlush())) return;
+      if (!(await runCourseFlush())) return;
       setSelectedId(id);
       const item = findItem(lessons, id);
       if (item?.type === 'lesson') {
@@ -225,7 +233,7 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
         setFormMode('folder-edit');
       }
     },
-    [lessons, runCourseFlush, setFormMode, setSelectedLessonTreeId],
+    [lessons, runCourseFlush, runDetailFlush, setFormMode, setSelectedLessonTreeId],
   );
 
   return (

@@ -28,6 +28,7 @@ export default function FolderForm({ course }: FolderFormProps) {
     selectedLessonTreeId,
     setSelectedLessonTreeId,
     lessonTreeUi,
+    lessonTreeSourceRef,
     registerDetailFlush,
     runCourseFlush,
   } = useCoursesUI();
@@ -39,7 +40,10 @@ export default function FolderForm({ course }: FolderFormProps) {
     setFormMode('course-edit');
   };
 
-  const tree = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
+  const tree =
+    lessonTreeSourceRef.current ??
+    lessonTreeUi ??
+    apiTreeToTreeData(course.lessonTree ?? []);
   const node = selectedLessonTreeId
     ? findItem(tree, selectedLessonTreeId)
     : null;
@@ -61,7 +65,10 @@ export default function FolderForm({ course }: FolderFormProps) {
 
   const persistFolderToServer = useCallback(async (): Promise<boolean> => {
     if (!selectedLessonTreeId) return false;
-    const treeNow = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
+    const treeNow =
+      lessonTreeSourceRef.current ??
+      lessonTreeUi ??
+      apiTreeToTreeData(course.lessonTree ?? []);
     try {
       const overrides = {
         [selectedLessonTreeId]: { title: title.trim() },
@@ -77,7 +84,14 @@ export default function FolderForm({ course }: FolderFormProps) {
       console.error('Failed to save folder', err);
       return false;
     }
-  }, [selectedLessonTreeId, title, course, lessonTreeUi, updateCourseLessonTree]);
+  }, [
+    selectedLessonTreeId,
+    title,
+    course,
+    lessonTreeUi,
+    lessonTreeSourceRef,
+    updateCourseLessonTree,
+  ]);
 
   const flushFolderChanges = useCallback(async (): Promise<boolean> => {
     if (isViewMode) return true;
@@ -150,7 +164,10 @@ export default function FolderForm({ course }: FolderFormProps) {
       return;
     }
 
-    const t = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
+    const t =
+      lessonTreeSourceRef.current ??
+      lessonTreeUi ??
+      apiTreeToTreeData(course.lessonTree ?? []);
     const nextTree = removeTreeItemHoistingFolderChildrenToRoot(
       t,
       selectedLessonTreeId,

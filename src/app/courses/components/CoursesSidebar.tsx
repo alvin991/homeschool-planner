@@ -15,6 +15,7 @@ export default function CoursesSidebar() {
     triggerLessonCreate,
     triggerFolderCreate,
     runCourseFlush,
+    runDetailFlush,
   } = useCoursesUI();
 
   const courseForSidebar = useMemo(() => {
@@ -54,6 +55,7 @@ export default function CoursesSidebar() {
 
   const handleNewLessonClick = () => {
     void (async () => {
+      if (!(await runDetailFlush())) return;
       if (!(await runCourseFlush())) return;
       setFormMode('lesson-new');
       triggerLessonCreate(courseForSidebar._id);
@@ -62,6 +64,7 @@ export default function CoursesSidebar() {
 
   const handleNewFolderClick = () => {
     void (async () => {
+      if (!(await runDetailFlush())) return;
       if (!(await runCourseFlush())) return;
       setFormMode('folder-new');
       triggerFolderCreate(courseForSidebar._id);

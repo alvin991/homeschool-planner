@@ -30,7 +30,9 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
     setFormMode,
     selectedLessonTreeId,
     setSelectedLessonTreeId,
+    draftItemId,
     lessonTreeUi,
+    lessonTreeSourceRef,
     registerDetailFlush,
     runCourseFlush,
   } = useCoursesUI();
@@ -49,7 +51,10 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
   });
 
   const persistLessonToServer = useCallback(async (): Promise<boolean> => {
-    const tree = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
+    const tree =
+      lessonTreeSourceRef.current ??
+      lessonTreeUi ??
+      apiTreeToTreeData(course.lessonTree ?? []);
     try {
       if (formMode === 'lesson-edit' && lesson) {
         const overrides = {
@@ -67,9 +72,10 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
         });
         return true;
       }
-      if (formMode === 'lesson-new' && selectedLessonTreeId) {
+      const newLessonKey = selectedLessonTreeId ?? draftItemId;
+      if (formMode === 'lesson-new' && newLessonKey) {
         const overrides = {
-          [selectedLessonTreeId]: {
+          [newLessonKey]: {
             title: title.trim(),
             content,
             note: description,
@@ -92,11 +98,13 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
     formMode,
     lesson,
     selectedLessonTreeId,
+    draftItemId,
     title,
     content,
     description,
     course,
     lessonTreeUi,
+    lessonTreeSourceRef,
     updateCourseLessonTree,
   ]);
 
@@ -172,7 +180,10 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
       return;
     }
 
-    const tree = lessonTreeUi ?? apiTreeToTreeData(course.lessonTree ?? []);
+    const tree =
+      lessonTreeSourceRef.current ??
+      lessonTreeUi ??
+      apiTreeToTreeData(course.lessonTree ?? []);
     const nextTree = removeTreeItemHoistingFolderChildrenToRoot(
       tree,
       selectedLessonTreeId,
