@@ -155,8 +155,9 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
     cancelDraftItem();
   };
 
+  const showLessonDelete = formMode === 'lesson-view' || formMode === 'lesson-edit';
+
   const handleDelete = async () => {
-    if (isViewMode) return;
     if (formMode === 'lesson-new') {
       if (
         !window.confirm(
@@ -169,7 +170,11 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
       return;
     }
 
-    if (formMode !== 'lesson-edit' || !lesson || !selectedLessonTreeId) {
+    if (
+      (formMode !== 'lesson-edit' && formMode !== 'lesson-view') ||
+      !lesson ||
+      !selectedLessonTreeId
+    ) {
       return;
     }
     if (
@@ -290,39 +295,43 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
-          {isViewMode ? (
-            <div className="ml-auto flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost border border-gray-300"
-                onClick={closeDetailPanel}
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                className="btn border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
-                onClick={() => {
-                  void (async () => {
-                    if (!(await runCourseFlush())) return;
-                    setFormMode('lesson-edit');
-                  })();
-                }}
-              >
-                Edit
-              </button>
-            </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                disabled={loading}
-                className="btn btn-ghost border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
-                onClick={handleDelete}
-              >
-                Delete
-              </button>
-              <div className="flex gap-2">
+          {showLessonDelete ? (
+            <button
+              type="button"
+              disabled={loading}
+              className="btn btn-ghost border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
+              onClick={handleDelete}
+            >
+              Delete
+            </button>
+          ) : null}
+          <div
+            className={`flex flex-wrap gap-2 ${showLessonDelete ? '' : 'ml-auto'}`}
+          >
+            {isViewMode ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost border border-gray-300"
+                  onClick={closeDetailPanel}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
+                  onClick={() => {
+                    void (async () => {
+                      if (!(await runCourseFlush())) return;
+                      setFormMode('lesson-edit');
+                    })();
+                  }}
+                >
+                  Edit
+                </button>
+              </>
+            ) : (
+              <>
                 <button
                   type="button"
                   className="btn btn-ghost border border-gray-300"
@@ -337,9 +346,9 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
                 >
                   {loading ? 'Saving…' : 'Save'}
                 </button>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </form>
     </div>
