@@ -157,6 +157,11 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
 
   const showLessonDelete = formMode === 'lesson-view' || formMode === 'lesson-edit';
 
+  const enterLessonEditMode = useCallback(async () => {
+    if (!(await runCourseFlush())) return;
+    setFormMode('lesson-edit');
+  }, [runCourseFlush, setFormMode]);
+
   const handleDelete = async () => {
     if (formMode === 'lesson-new') {
       if (
@@ -232,6 +237,10 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
             value={title}
             readOnly={isViewMode}
             aria-invalid={!isViewMode && titleError}
+            title={isViewMode ? 'Double-click to edit' : undefined}
+            onDoubleClick={
+              isViewMode ? () => void enterLessonEditMode() : undefined
+            }
             onChange={(e) => {
               setTitle(e.target.value);
               setTitleError(false);
@@ -260,6 +269,10 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
           <textarea
             value={description}
             readOnly={isViewMode}
+            title={isViewMode ? 'Double-click to edit' : undefined}
+            onDoubleClick={
+              isViewMode ? () => void enterLessonEditMode() : undefined
+            }
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe what students will learn or do..."
             rows={3}
@@ -280,6 +293,10 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
           <textarea
             value={content}
             readOnly={isViewMode}
+            title={isViewMode ? 'Double-click to edit' : undefined}
+            onDoubleClick={
+              isViewMode ? () => void enterLessonEditMode() : undefined
+            }
             onChange={(e) => setContent(e.target.value)}
             placeholder="Add content, instructions, or notes..."
             rows={8}
@@ -320,12 +337,7 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
                 <button
                   type="button"
                   className="btn border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
-                  onClick={() => {
-                    void (async () => {
-                      if (!(await runCourseFlush())) return;
-                      setFormMode('lesson-edit');
-                    })();
-                  }}
+                  onClick={() => void enterLessonEditMode()}
                 >
                   Edit
                 </button>
