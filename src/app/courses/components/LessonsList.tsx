@@ -6,7 +6,7 @@ import { DndContext, DragOverlay } from '@dnd-kit/core';
 import apolloClient from '@/utils/apolloClient';
 import { TreeRenderer } from './lessons-tree/TreeRender';
 import { TreeData, TreeItem } from './lessons-tree/types';
-import { findItem } from './lessons-tree/treeUtils';
+import { findItem, maxOutlinePosition } from './lessons-tree/treeUtils';
 import useTreeDrag from './lessons-tree/useTreeDrag';
 import type { CourseType } from '../types';
 import { GET_COURSES, UPDATE_COURSE_LESSON_TREE } from '../api/course.graphql';
@@ -114,12 +114,18 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
 
     queueMicrotask(() => {
       if (kind === 'lesson') {
-        const newLesson: TreeItem = {
-          id: `lesson-${Date.now()}`,
-          type: 'lesson',
-          title: 'Untitled',
-        };
-        setLessons((prev) => [...prev, newLesson]);
+        const id = `lesson-${Date.now()}`;
+        let newLesson: TreeItem | undefined;
+        setLessons((prev) => {
+          newLesson = {
+            id,
+            type: 'lesson',
+            title: 'Untitled',
+            outlinePosition: maxOutlinePosition(prev) + 1,
+          };
+          return [...prev, newLesson];
+        });
+        if (!newLesson) return;
         setSelectedId(newLesson.id);
         setPressedId(null);
         setSelectedLessonTreeId(newLesson.id);
@@ -127,13 +133,19 @@ export default function LessonsList({ course, onNewLesson }: LessonsListProps) {
         onNewLesson?.(newLesson);
         return;
       }
-      const newFolder: TreeItem = {
-        id: `folder-${Date.now()}`,
-        type: 'folder',
-        title: 'Untitled folder',
-        children: [],
-      };
-      setLessons((prev) => [...prev, newFolder]);
+      const folderId = `folder-${Date.now()}`;
+      let newFolder: TreeItem | undefined;
+      setLessons((prev) => {
+        newFolder = {
+          id: folderId,
+          type: 'folder',
+          title: 'Untitled folder',
+          outlinePosition: maxOutlinePosition(prev) + 1,
+          children: [],
+        };
+        return [...prev, newFolder];
+      });
+      if (!newFolder) return;
       setSelectedId(newFolder.id);
       setPressedId(null);
       setSelectedLessonTreeId(newFolder.id);

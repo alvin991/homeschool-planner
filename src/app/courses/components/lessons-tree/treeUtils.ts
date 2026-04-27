@@ -1,5 +1,20 @@
 import { TreeData, TreeItem } from './types';
 
+/** Highest `outlinePosition` in the tree (for assigning new nodes). */
+export function maxOutlinePosition(items: TreeData): number {
+  let max = 0;
+  function walk(nodes: TreeData) {
+    for (const n of nodes) {
+      if (typeof n.outlinePosition === 'number' && n.outlinePosition > max) {
+        max = n.outlinePosition;
+      }
+      if (n.children?.length) walk(n.children);
+    }
+  }
+  walk(items);
+  return max;
+}
+
 // Flatten tree into a single array (for SortableContext)
 export function flattenTree(items: TreeData, depth = 0): Array<{ id: string; depth: number }> {
   const flattened: Array<{ id: string; depth: number }> = [];

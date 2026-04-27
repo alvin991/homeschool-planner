@@ -121,13 +121,29 @@ export function TreeRenderer({
             onPressChange?.(null);
           }}
         >
-          <TreeItemComponent
-            item={item}
-            depth={depth}
-            showInsertBefore={insertBeforeId === item.id}
-            selected={selectedId === item.id}
-            pressed={pressedId === item.id}
-          />
+          {/* Numbers stay in one column; only the row card picks up tree depth. */}
+          <div className="flex items-center gap-2 min-w-0">
+            {item.outlinePosition != null && (
+              <span
+                className="tabular-nums text-gray-500 text-sm shrink-0 inline-block min-w-[1.75rem] text-right"
+                aria-hidden
+              >
+                {item.outlinePosition}.
+              </span>
+            )}
+            <div
+              className="min-w-0 flex-1"
+              style={{ marginLeft: `${depth * 1.5}rem` }}
+            >
+              <TreeItemComponent
+                item={item}
+                depth={0}
+                showInsertBefore={insertBeforeId === item.id}
+                selected={selectedId === item.id}
+                pressed={pressedId === item.id}
+              />
+            </div>
+          </div>
 
           {item.type === 'folder' && item.children && item.children.length > 0 && (
             <TreeRenderer

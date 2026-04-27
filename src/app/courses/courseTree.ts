@@ -43,21 +43,28 @@ export function countLessonLeaves(
 /** API / Mongo tree → UI tree for dnd-kit. */
 export function apiTreeToTreeData(nodes: CourseTreeNodeType[] | undefined): TreeData {
   if (!nodes?.length) return [];
-  return nodes.map((n) => {
-    if (n.kind === 'folder') {
+  let position = 1;
+  function walk(ns: CourseTreeNodeType[]): TreeData {
+    return ns.map((n) => {
+      const outlinePosition = position++;
+      if (n.kind === 'folder') {
+        return {
+          id: String(n._id),
+          type: 'folder' as const,
+          title: n.title,
+          outlinePosition,
+          children: n.children?.length ? walk(n.children) : [],
+        };
+      }
       return {
         id: String(n._id),
-        type: 'folder' as const,
+        type: 'lesson' as const,
         title: n.title,
-        children: apiTreeToTreeData(n.children),
+        outlinePosition,
       };
-    }
-    return {
-      id: String(n._id),
-      type: 'lesson' as const,
-      title: n.title,
-    };
-  });
+    });
+  }
+  return walk(nodes);
 }
 
 export type LessonFieldOverrides = Record<
