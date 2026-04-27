@@ -36,7 +36,7 @@ function CourseDetails({ course }: CourseDetailsProps) {
           </p>
         </div>
       ) : !showLessonForm && !showFolderForm ? (
-        <CourseEmpty />
+        <CourseEmpty courseId={course._id} />
       ) : (
         <>
           {showLessonForm ? (
