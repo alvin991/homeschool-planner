@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local Playwright / npm prefix experiments (do not commit)
+/.npm-tools/
+/.playwright/
