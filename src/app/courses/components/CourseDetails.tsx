@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import type { CourseType } from '../types';
 import { findLessonInTree } from '../courseTree';
 import FolderForm from './FolderForm';
@@ -12,6 +12,8 @@ export type CourseDetailsProps = {
 
 function CourseDetails({ course }: CourseDetailsProps) {
   const { formMode, selectedLessonTreeId } = useCoursesUI();
+  const pendingFocusRef = useRef<'title' | 'description' | 'content' | null>(null);
+  const pendingFolderFocusRef = useRef<boolean>(false);
 
   const lessonForForm = useMemo(() => {
     if (formMode === 'lesson-new') return null;
@@ -44,11 +46,13 @@ function CourseDetails({ course }: CourseDetailsProps) {
               key={`${formMode}-${lessonForForm?._id ?? selectedLessonTreeId ?? 'none'}`}
               course={course}
               lesson={lessonForForm}
+              pendingFocusRef={pendingFocusRef}
             />
           ) : (
             <FolderForm
               key={`${formMode}-${selectedLessonTreeId ?? 'new'}`}
               course={course}
+              pendingFocusRef={pendingFolderFocusRef}
             />
           )}
         </>

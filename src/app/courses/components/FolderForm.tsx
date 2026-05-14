@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import apolloClient from '@/utils/apolloClient';
 import type { CourseType } from '../types';
@@ -14,12 +14,13 @@ import {
 
 export type FolderFormProps = {
   course: CourseType;
+  pendingFocusRef: { current: boolean };
 };
 
 const titleErrClass = (invalid: boolean) =>
   invalid ? ' ring-2 ring-red-500 border-red-500' : '';
 
-export default function FolderForm({ course }: FolderFormProps) {
+export default function FolderForm({ course, pendingFocusRef }: FolderFormProps) {
   const {
     cancelDraftItem,
     commitDraftItem,
@@ -56,6 +57,7 @@ export default function FolderForm({ course }: FolderFormProps) {
 
   const [title, setTitle] = useState(() => node?.title ?? '');
   const [titleError, setTitleError] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const [updateCourseLessonTree, { loading }] = useMutation(UPDATE_COURSE_LESSON_TREE, {
     client: apolloClient,
@@ -108,6 +110,29 @@ export default function FolderForm({ course }: FolderFormProps) {
     registerDetailFlush(flushFolderChanges);
     return () => registerDetailFlush(null);
   }, [registerDetailFlush, flushFolderChanges]);
+
+  const enterFolderEditMode = useCallback(async () => {
+    if (!(await runCourseFlush())) return;
+    setTimeout(() => {
+      pendingFocusRef.current = true;
+      setFormMode('folder-edit');
+    }, 0);
+  }, [runCourseFlush, setFormMode, pendingFocusRef]);
+
+  useEffect(() => {
+    if (formMode !== 'folder-edit' && formMode !== 'folder-new') return;
+    if (formMode === 'folder-edit' && !pendingFocusRef.current) return;
+    const ref = titleInputRef.current;
+    if (!ref) return;
+    const frameId = window.requestAnimationFrame(() => {
+      pendingFocusRef.current = false;
+      if (!ref.readOnly) {
+        ref.focus({ preventScroll: true });
+        ref.select();
+      }
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [formMode, pendingFocusRef]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,9 +238,12 @@ export default function FolderForm({ course }: FolderFormProps) {
             {!isViewMode ? <span className="text-red-600"> *</span> : null}
           </label>
           <input
+            ref={titleInputRef}
             value={title}
             readOnly={isViewMode}
             aria-invalid={!isViewMode && titleError}
+            title={isViewMode ? 'Double-click to edit' : undefined}
+            onDoubleClick={isViewMode ? () => void enterFolderEditMode() : undefined}
             onChange={(e) => {
               setTitle(e.target.value);
               setTitleError(false);
@@ -247,12 +275,7 @@ export default function FolderForm({ course }: FolderFormProps) {
               <button
                 type="button"
                 className="btn border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
-                onClick={() => {
-                  void (async () => {
-                    if (!(await runCourseFlush())) return;
-                    setFormMode('folder-edit');
-                  })();
-                }}
+                onClick={() => void enterFolderEditMode()}
               >
                 Edit
               </button>

@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useEffect, useRef, useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import apolloClient from '@/utils/apolloClient';
 import type { CourseType, LessonType } from '../types';
@@ -11,6 +11,7 @@ import { removeTreeItemHoistingFolderChildrenToRoot } from './lessons-tree/treeU
 export type LessonFormProps = {
   course: CourseType;
   lesson: LessonType | null;
+  pendingFocusRef: { current: 'title' | 'description' | 'content' | null };
 };
 
 const titleErrClass = (invalid: boolean) =>
@@ -18,11 +19,14 @@ const titleErrClass = (invalid: boolean) =>
     ? ' ring-2 ring-red-500 border-red-500'
     : '';
 
-export default function LessonForm({ course, lesson }: LessonFormProps) {
+export default function LessonForm({ course, lesson, pendingFocusRef }: LessonFormProps) {
   const [title, setTitle] = useState(() => lesson?.title ?? '');
   const [description, setDescription] = useState(() => lesson?.note ?? '');
   const [content, setContent] = useState(() => lesson?.content ?? '');
   const [titleError, setTitleError] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
+  const contentInputRef = useRef<HTMLTextAreaElement>(null);
   const {
     cancelDraftItem,
     commitDraftItem,
@@ -124,6 +128,24 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
     return () => registerDetailFlush(null);
   }, [registerDetailFlush, flushLessonChanges]);
 
+  useEffect(() => {
+    if (formMode !== 'lesson-edit' && formMode !== 'lesson-new') return;
+    const target = pendingFocusRef.current ?? 'title';
+    let ref: HTMLInputElement | HTMLTextAreaElement | null = null;
+    if (target === 'description') ref = descriptionInputRef.current;
+    else if (target === 'content') ref = contentInputRef.current;
+    else ref = titleInputRef.current;
+    if (!ref) return;
+    const frameId = window.requestAnimationFrame(() => {
+      pendingFocusRef.current = null;
+      if (!ref.readOnly) {
+        ref.focus({ preventScroll: true });
+        ref.select();
+      }
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [formMode, pendingFocusRef]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isViewMode) return;
@@ -157,10 +179,17 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
 
   const showLessonDelete = formMode === 'lesson-view' || formMode === 'lesson-edit';
 
-  const enterLessonEditMode = useCallback(async () => {
-    if (!(await runCourseFlush())) return;
-    setFormMode('lesson-edit');
-  }, [runCourseFlush, setFormMode]);
+  // Accepts: target: 'title' | 'description' | 'content'
+  const enterLessonEditMode = useCallback(
+    async (target: 'title' | 'description' | 'content' = 'title') => {
+      if (!(await runCourseFlush())) return;
+      setTimeout(() => {
+        pendingFocusRef.current = target;
+        setFormMode('lesson-edit');
+      }, 0);
+    },
+    [runCourseFlush, setFormMode, pendingFocusRef],
+  );
 
   const handleDelete = async () => {
     if (formMode === 'lesson-new') {
@@ -234,12 +263,13 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
             {!isViewMode ? <span className="text-red-600"> *</span> : null}
           </label>
           <input
+            ref={titleInputRef}
             value={title}
             readOnly={isViewMode}
             aria-invalid={!isViewMode && titleError}
             title={isViewMode ? 'Double-click to edit' : undefined}
             onDoubleClick={
-              isViewMode ? () => void enterLessonEditMode() : undefined
+              isViewMode ? () => void enterLessonEditMode('title') : undefined
             }
             onChange={(e) => {
               setTitle(e.target.value);
@@ -267,11 +297,12 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
             Description
           </label>
           <textarea
+            ref={descriptionInputRef}
             value={description}
             readOnly={isViewMode}
             title={isViewMode ? 'Double-click to edit' : undefined}
             onDoubleClick={
-              isViewMode ? () => void enterLessonEditMode() : undefined
+              isViewMode ? () => void enterLessonEditMode('description') : undefined
             }
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe what students will learn or do..."
@@ -291,11 +322,12 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
             Content
           </label>
           <textarea
+            ref={contentInputRef}
             value={content}
             readOnly={isViewMode}
             title={isViewMode ? 'Double-click to edit' : undefined}
             onDoubleClick={
-              isViewMode ? () => void enterLessonEditMode() : undefined
+              isViewMode ? () => void enterLessonEditMode('content') : undefined
             }
             onChange={(e) => setContent(e.target.value)}
             placeholder="Add content, instructions, or notes..."
@@ -337,7 +369,7 @@ export default function LessonForm({ course, lesson }: LessonFormProps) {
                 <button
                   type="button"
                   className="btn border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
-                  onClick={() => void enterLessonEditMode()}
+                  onClick={() => void enterLessonEditMode('title')}
                 >
                   Edit
                 </button>
