@@ -14,13 +14,12 @@ import {
 
 export type FolderFormProps = {
   course: CourseType;
-  pendingFocusRef: { current: boolean };
 };
 
 const titleErrClass = (invalid: boolean) =>
   invalid ? ' ring-2 ring-red-500 border-red-500' : '';
 
-export default function FolderForm({ course, pendingFocusRef }: FolderFormProps) {
+export default function FolderForm({ course }: FolderFormProps) {
   const {
     cancelDraftItem,
     commitDraftItem,
@@ -42,7 +41,6 @@ export default function FolderForm({ course, pendingFocusRef }: FolderFormProps)
   };
 
   const tree =
-    lessonTreeSourceRef.current ??
     lessonTreeUi ??
     apiTreeToTreeData(course.lessonTree ?? []);
   const node = selectedLessonTreeId
@@ -113,26 +111,21 @@ export default function FolderForm({ course, pendingFocusRef }: FolderFormProps)
 
   const enterFolderEditMode = useCallback(async () => {
     if (!(await runCourseFlush())) return;
-    setTimeout(() => {
-      pendingFocusRef.current = true;
-      setFormMode('folder-edit');
-    }, 0);
-  }, [runCourseFlush, setFormMode, pendingFocusRef]);
+    setFormMode('folder-edit');
+  }, [runCourseFlush, setFormMode]);
 
   useEffect(() => {
     if (formMode !== 'folder-edit' && formMode !== 'folder-new') return;
-    if (formMode === 'folder-edit' && !pendingFocusRef.current) return;
     const ref = titleInputRef.current;
     if (!ref) return;
     const frameId = window.requestAnimationFrame(() => {
-      pendingFocusRef.current = false;
       if (!ref.readOnly) {
         ref.focus({ preventScroll: true });
         ref.select();
       }
     });
     return () => window.cancelAnimationFrame(frameId);
-  }, [formMode, pendingFocusRef]);
+  }, [formMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

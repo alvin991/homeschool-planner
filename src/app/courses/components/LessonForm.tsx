@@ -11,7 +11,6 @@ import { removeTreeItemHoistingFolderChildrenToRoot } from './lessons-tree/treeU
 export type LessonFormProps = {
   course: CourseType;
   lesson: LessonType | null;
-  pendingFocusRef: { current: 'title' | 'description' | 'content' | null };
 };
 
 const titleErrClass = (invalid: boolean) =>
@@ -19,7 +18,8 @@ const titleErrClass = (invalid: boolean) =>
     ? ' ring-2 ring-red-500 border-red-500'
     : '';
 
-export default function LessonForm({ course, lesson, pendingFocusRef }: LessonFormProps) {
+export default function LessonForm({ course, lesson }: LessonFormProps) {
+  const pendingFocusRef = useRef<'title' | 'description' | 'content' | null>(null);
   const [title, setTitle] = useState(() => lesson?.title ?? '');
   const [description, setDescription] = useState(() => lesson?.note ?? '');
   const [content, setContent] = useState(() => lesson?.content ?? '');
