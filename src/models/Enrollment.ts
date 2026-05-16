@@ -1,15 +1,27 @@
-import { Schema, model, Document, Types } from 'mongoose';
-  
+import { Schema, model, Document, Types, Model } from 'mongoose';
+import mongoose from 'mongoose';
+
 export interface IEnrollment extends Document {
-  studentName: string; // Replace or extend with a User reference if needed
+  student: Types.ObjectId;
   course: Types.ObjectId;
-  enrolledAt: Date;
+  enrollment_date: Date;
+  frequency: Array<number>;
+  lesson_rate: number;
+  status: 'active' | 'completed' | 'dropped';
+  suspension_periods?: Array<{ start: Date; end: Date }>;
 }
 
 const EnrollmentSchema = new Schema<IEnrollment>({
-  studentName: { type: String, required: true }, // Replace or extend with a User reference if needed
+  student: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
   course: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-  enrolledAt: { type: Date, default: Date.now },
+  enrollment_date: { type: Date, default: Date.now },
+  frequency: { type: [Number], default: [] },
+  lesson_rate: { type: Number, default: 1 },
+  status: { type: String, enum: ['active', 'completed', 'dropped'], default: 'active' },
+  suspension_periods: { type: [{ start: Date, end: Date }] },
 });
 
-export default model<IEnrollment>('Enrollment', EnrollmentSchema);
+const EnrollmentModel = (mongoose.models.Enrollment as Model<IEnrollment> | undefined) ??
+  model<IEnrollment>('Enrollment', EnrollmentSchema);
+
+export default EnrollmentModel;

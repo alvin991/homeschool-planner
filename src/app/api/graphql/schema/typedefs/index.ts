@@ -6,6 +6,9 @@ import { mutationCourseTypeDefs } from './mutation.course.typedefs';
 import { queryResourceTypeDefs } from './query.resource.typedefs';
 import { queryCourseTypeDefs } from './query.course.typedefs';
 import { subjectPublisherTypeDefs } from './subjectPublisher.typedefs';
+import { enrollmentTypeDefs } from './enrollment.typedefs';
+import { queryEnrollmentTypeDefs } from './query.enrollment.typedefs';
+import { mutationEnrollmentTypeDefs } from './mutation.enrollment.typedefs';
 
 /** Order matters: types before roots; `extend` after base `type Query` / `type Mutation`. */
 export const typeDefs = [
@@ -13,8 +16,11 @@ export const typeDefs = [
   courseTypeDefs,
   subjectPublisherTypeDefs,
   sharedInputsTypeDefs,
+  enrollmentTypeDefs,
   queryCourseTypeDefs,
   queryResourceTypeDefs,
+  queryEnrollmentTypeDefs,
   mutationCourseTypeDefs,
   mutationResourceTypeDefs,
+  mutationEnrollmentTypeDefs,
 ].join('\n');
