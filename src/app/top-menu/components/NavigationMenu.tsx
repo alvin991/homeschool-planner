@@ -49,14 +49,14 @@ export default function NavigationMenu() {
           >
             Subjects
           </Link>
+          <Link
+            href="/resources/students"
+            className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            Students
+          </Link>
         </div>
       </details>
-      <Link
-        href="/students"
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 hover:bg-gray-100"
-      >
-        👤 Students
-      </Link>
       <button
         type="button"
         className="ml-2 h-8 w-8 rounded-full bg-gray-300 transition-colors hover:bg-gray-400"
