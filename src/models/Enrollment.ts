@@ -5,6 +5,8 @@ export interface IEnrollment extends Document {
   student: Types.ObjectId;
   course: Types.ObjectId;
   enrollment_date: Date;
+  start_date: Date;
+  end_date?: Date;
   frequency: Array<number>;
   lesson_rate: number;
   status: 'active' | 'completed' | 'dropped';
@@ -15,6 +17,8 @@ const EnrollmentSchema = new Schema<IEnrollment>({
   student: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
   course: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
   enrollment_date: { type: Date, default: Date.now },
+  start_date: { type: Date, required: true },
+  end_date: { type: Date },
   frequency: { type: [Number], default: [] },
   lesson_rate: { type: Number, default: 1 },
   status: { type: String, enum: ['active', 'completed', 'dropped'], default: 'active' },

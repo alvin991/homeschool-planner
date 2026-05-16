@@ -4,6 +4,8 @@ export const enrollmentTypeDefs = `#graphql
     student: ID! # Replace with User type if needed
     course: ID!
     enrollment_date: String!
+    start_date: String!
+    end_date: String
     frequency: [Int!]!
     lesson_rate: Float!
     status: EnrollmentStatus!

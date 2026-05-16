@@ -25,6 +25,8 @@ export const sharedInputsTypeDefs = `#graphql
   input EnrollmentCreateInput {
     studentId: ID!
     courseId: ID!
+    start_date: String!
+    end_date: String
     frequency: [Int!]
     lesson_rate: Float
     status: EnrollmentStatus
@@ -32,6 +34,10 @@ export const sharedInputsTypeDefs = `#graphql
   }
 
   input EnrollmentUpdateInput {
+    studentId: ID!
+    courseId: ID!
+    start_date: String!
+    end_date: String
     enrollment_date: String
     frequency: [Int!]
     lesson_rate: Float
