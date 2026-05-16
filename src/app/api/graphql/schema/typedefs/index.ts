@@ -9,6 +9,9 @@ import { subjectPublisherTypeDefs } from './subjectPublisher.typedefs';
 import { enrollmentTypeDefs } from './enrollment.typedefs';
 import { queryEnrollmentTypeDefs } from './query.enrollment.typedefs';
 import { mutationEnrollmentTypeDefs } from './mutation.enrollment.typedefs';
+import { studentTypeDefs } from './student.typedefs';
+import { queryStudentTypeDefs } from './query.student.typedefs';
+import { mutationStudentTypeDefs } from './mutation.student.typedefs';
 
 /** Order matters: types before roots; `extend` after base `type Query` / `type Mutation`. */
 export const typeDefs = [
@@ -16,11 +19,14 @@ export const typeDefs = [
   courseTypeDefs,
   subjectPublisherTypeDefs,
   sharedInputsTypeDefs,
+  studentTypeDefs,
   enrollmentTypeDefs,
   queryCourseTypeDefs,
   queryResourceTypeDefs,
+  queryStudentTypeDefs,
   queryEnrollmentTypeDefs,
   mutationCourseTypeDefs,
   mutationResourceTypeDefs,
+  mutationStudentTypeDefs,
   mutationEnrollmentTypeDefs,
 ].join('\n');
