@@ -7,14 +7,46 @@ export const enrollmentTypeDefs = `#graphql
     start_date: String!
     end_date: String
     frequency: [Int!]!
+    week_interval: Int!
     lesson_rate: Float!
     status: EnrollmentStatus!
     suspension_periods: [SuspensionPeriod!]!
+    lesson_snapshot: [LessonSnapshot!]!
+    lesson_occurrences: [LessonOccurrence!]!
+    scheduled_dates: [String!]!
+    last_synced_at: String!
   }
 
   type SuspensionPeriod {
     start: String!
     end: String!
+  }
+
+  type LessonSnapshot {
+    _id: ID!
+    title: String!
+    content: String
+    note: String
+  }
+
+  type LessonOccurrence {
+    sequence: Int!
+    lessons: [LessonOccurrenceLesson!]!
+    status: LessonOccurrenceStatus!
+    completed_date: String
+  }
+
+  type LessonOccurrenceLesson {
+    lesson_id: ID!
+    lesson_title: String!
+    day_number: Int
+    total_days: Int
+  }
+
+  enum LessonOccurrenceStatus {
+    pending
+    completed
+    skipped
   }
 
   enum EnrollmentStatus {
