@@ -6,7 +6,7 @@ export const enrollmentTypeDefs = `#graphql
     enrollment_date: String!
     start_date: String!
     end_date: String
-    frequency: [Int!]!
+    weekdays: [Int!]!
     week_interval: Int!
     lesson_rate: Float!
     status: EnrollmentStatus!

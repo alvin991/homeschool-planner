@@ -26,7 +26,7 @@ export const enrollmentResolvers = {
           courseId: string;
           start_date: string;
           end_date?: string;
-          frequency?: Array<number>;
+          weekdays?: Array<number>;
           week_interval?: 1 | 2;
           lesson_rate?: 0.25 | 0.5 | 1 | 2;
           status?: 'active' | 'completed' | 'dropped';
@@ -41,7 +41,7 @@ export const enrollmentResolvers = {
         end: new Date(p.end),
       }));
 
-      if ((input.frequency ?? []).length === 0)
+      if ((input.weekdays ?? []).length === 0)
         throw new Error('At least one weekday must be selected');
       const course = await Course.findById(input.courseId).lean();
       if (!course) throw new Error('Course not found');
@@ -55,7 +55,7 @@ export const enrollmentResolvers = {
       );
       const scheduledDates = generateScheduledDates(
         startDate,
-        input.frequency ?? [],
+        input.weekdays ?? [],
         input.week_interval ?? 1,
         suspensionPeriods,
         lessonOccurrences.length,
@@ -71,7 +71,7 @@ export const enrollmentResolvers = {
         course: input.courseId,
         start_date: startDate,
         end_date: endDate,
-        frequency: input.frequency,
+        weekdays: input.weekdays,
         week_interval: input.week_interval,
         lesson_rate: input.lesson_rate,
         status: input.status,
@@ -96,7 +96,7 @@ export const enrollmentResolvers = {
           courseId?: string;
           start_date?: string;
           end_date?: string | null;
-          frequency?: Array<number>;
+          weekdays?: Array<number>;
           week_interval?: 1 | 2;
           lesson_rate?: 0.25 | 0.5 | 1 | 2;
           status?: 'active' | 'completed' | 'dropped';
@@ -104,7 +104,7 @@ export const enrollmentResolvers = {
         };
       }
     ) => {
-      if (input.frequency !== undefined && input.frequency.length === 0)
+      if (input.weekdays !== undefined && input.weekdays.length === 0)
         throw new Error('At least one weekday must be selected');
 
       // 1. Fetch existing enrollment
@@ -122,7 +122,7 @@ export const enrollmentResolvers = {
         input.lesson_rate !== undefined &&
         input.lesson_rate !== existing.lesson_rate;
       const scheduleChanged =
-        input.frequency !== undefined ||
+        input.weekdays !== undefined ||
         input.week_interval !== undefined ||
         input.suspension_periods !== undefined ||
         input.start_date !== undefined ||
@@ -136,7 +136,7 @@ export const enrollmentResolvers = {
         updates.start_date = new Date(input.start_date);
       if ('end_date' in input)
         updates.end_date = input.end_date ? new Date(input.end_date) : null;
-      if (input.frequency !== undefined) updates.frequency = input.frequency;
+      if (input.weekdays !== undefined) updates.weekdays = input.weekdays;
       if (input.week_interval !== undefined)
         updates.week_interval = input.week_interval;
       if (input.lesson_rate !== undefined)
@@ -189,7 +189,7 @@ export const enrollmentResolvers = {
               ? new Date(input.end_date)
               : undefined
             : (existing.end_date ?? undefined);
-        const frequency = input.frequency ?? existing.frequency;
+        const weekdays = input.weekdays ?? existing.weekdays;
         const weekInterval = input.week_interval ?? existing.week_interval;
         const effectiveSuspensions =
           suspensionPeriods ??
@@ -201,7 +201,7 @@ export const enrollmentResolvers = {
 
         const newScheduledDates = generateScheduledDates(
           startDate,
-          frequency,
+          weekdays,
           weekInterval,
           effectiveSuspensions,
           effectiveOccurrences.length,

@@ -19,7 +19,7 @@ export const GET_ENROLLMENTS = gql`
       course
       start_date
       end_date
-      frequency
+      weekdays
       lesson_rate
       status
       suspension_periods {
@@ -37,7 +37,7 @@ export const CREATE_ENROLLMENT = gql`
       course
       start_date
       end_date
-      frequency
+      weekdays
       lesson_rate
       status
       suspension_periods {
@@ -55,7 +55,7 @@ export const UPDATE_ENROLLMENT = gql`
       course
       start_date
       end_date
-      frequency
+      weekdays
       lesson_rate
       status
       suspension_periods {
@@ -83,7 +83,7 @@ export type EnrollmentRow = {
   course: string;
   start_date: string;
   end_date: string | null;
-  frequency: number[];
+  weekdays: number[];
   lesson_rate: number;
   status: EnrollmentStatus;
   suspension_periods: SuspensionPeriod[];

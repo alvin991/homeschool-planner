@@ -22,13 +22,13 @@ import {
 } from './api';
 
 const WEEKDAYS = [
-  { label: 'Mon', value: 1 },
-  { label: 'Tue', value: 2 },
-  { label: 'Wed', value: 3 },
-  { label: 'Thu', value: 4 },
-  { label: 'Fri', value: 5 },
-  { label: 'Sat', value: 6 },
-  { label: 'Sun', value: 7 },
+  { label: 'Mon', value: 0 },
+  { label: 'Tue', value: 1 },
+  { label: 'Wed', value: 2 },
+  { label: 'Thu', value: 3 },
+  { label: 'Fri', value: 4 },
+  { label: 'Sat', value: 5 },
+  { label: 'Sun', value: 6 },
 ];
 
 const STATUS_OPTIONS: { label: string; value: EnrollmentStatus }[] = [
@@ -42,7 +42,7 @@ function emptyForm() {
     courseId: '',
     start_date: '',
     end_date: '',
-    frequency: [] as number[],
+    weekdays: [] as number[],
     lesson_rate: 1,
     status: 'active' as EnrollmentStatus,
     suspension_periods: [] as SuspensionPeriod[],
@@ -108,7 +108,7 @@ export default function EnrollmentsPage() {
       courseId: e.course,
       start_date: e.start_date ?? '',
       end_date: e.end_date ?? '',
-      frequency: [...e.frequency],
+      weekdays: [...e.weekdays],
       lesson_rate: e.lesson_rate,
       status: e.status,
       suspension_periods: e.suspension_periods.map((p) => ({ start: p.start, end: p.end })),
@@ -170,7 +170,7 @@ export default function EnrollmentsPage() {
         courseId: form.courseId,
         start_date: form.start_date,
         end_date: form.end_date || null,
-        frequency: form.frequency,
+        weekdays: form.weekdays,
         lesson_rate: form.lesson_rate,
         status: form.status,
         suspension_periods: form.suspension_periods,
@@ -212,9 +212,9 @@ export default function EnrollmentsPage() {
   const toggleDay = (value: number) => {
     setForm((f) => ({
       ...f,
-      frequency: f.frequency.includes(value)
-        ? f.frequency.filter((d) => d !== value)
-        : [...f.frequency, value].sort((a, b) => a - b),
+      weekdays: f.weekdays.includes(value)
+        ? f.weekdays.filter((d) => d !== value)
+        : [...f.weekdays, value].sort((a, b) => a - b),
     }));
   };
 
@@ -373,7 +373,7 @@ export default function EnrollmentsPage() {
             <p className="mb-2 text-sm font-medium text-gray-700">Lesson days</p>
             <div className="flex flex-wrap gap-2">
               {WEEKDAYS.map((day) => {
-                const active = form.frequency.includes(day.value);
+                const active = form.weekdays.includes(day.value);
                 return (
                   <button
                     key={day.value}

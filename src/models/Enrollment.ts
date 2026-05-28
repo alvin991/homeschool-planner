@@ -28,7 +28,7 @@ export interface IEnrollment extends Document {
   enrollment_date: Date;
   start_date: Date;
   end_date?: Date;
-  frequency: Array<number>;
+  weekdays: Array<number>;
   week_interval: 1 | 2;
   lesson_rate: 0.25 | 0.5 | 1 | 2;
   status: 'active' | 'completed' | 'dropped';
@@ -75,7 +75,7 @@ const EnrollmentSchema = new Schema<IEnrollment>({
   enrollment_date: { type: Date, default: Date.now },
   start_date: { type: Date, required: true },
   end_date: { type: Date },
-  frequency: { type: [Number], default: [] },
+  weekdays: { type: [Number], default: [] },
   week_interval: { type: Number, enum: [1, 2], default: 1 },
   lesson_rate: { type: Number, enum: [0.25, 0.5, 1, 2], default: 1 },
   status: { type: String, enum: ['active', 'completed', 'dropped'], default: 'active' },

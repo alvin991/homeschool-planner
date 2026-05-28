@@ -88,7 +88,7 @@ export function generateLessonOccurrences(
 
 export function generateScheduledDates(
   startDate: Date,
-  frequency: number[],
+  weekdays: number[],
   weekInterval: 1 | 2,
   suspensionPeriods: Array<{ start: Date; end: Date }>,
   totalOccurrences: number,
@@ -115,12 +115,12 @@ export function generateScheduledDates(
       (current.getTime() - startOfWeek.getTime()) / MS_PER_WEEK
     );
     const isActiveWeek = weekNumber % weekInterval === 0;
-    const isFrequencyDay = frequency.includes(current.getDay());
+    const isWeekday = weekdays.includes(current.getDay());
     const isSuspended = suspensionPeriods.some(
       (p) => current >= p.start && current <= p.end
     );
 
-    if (isActiveWeek && isFrequencyDay && !isSuspended) {
+    if (isActiveWeek && isWeekday && !isSuspended) {
       result.push(new Date(current));
     }
 
