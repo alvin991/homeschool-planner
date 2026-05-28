@@ -22,31 +22,32 @@ export const sharedInputsTypeDefs = `#graphql
     color: String
   }
 
+  input SuspensionPeriodInput {
+    start: String!
+    end: String!
+  }
+
   input EnrollmentCreateInput {
     studentId: ID!
     courseId: ID!
     start_date: String!
     end_date: String
     frequency: [Int!]
+    week_interval: Int
     lesson_rate: Float
     status: EnrollmentStatus
     suspension_periods: [SuspensionPeriodInput!]
   }
 
   input EnrollmentUpdateInput {
-    studentId: ID!
-    courseId: ID!
-    start_date: String!
+    studentId: ID
+    courseId: ID
+    start_date: String
     end_date: String
-    enrollment_date: String
     frequency: [Int!]
+    week_interval: Int
     lesson_rate: Float
     status: EnrollmentStatus
     suspension_periods: [SuspensionPeriodInput!]
-  }
-
-  input SuspensionPeriodInput {
-    start: String!
-    end: String!
   }
 `;

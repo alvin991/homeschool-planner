@@ -1,4 +1,10 @@
+import Course from '@/models/Course';
 import Enrollment from '@/models/Enrollment';
+import {
+  flattenLessonTree,
+  generateLessonOccurrences,
+  generateScheduledDates,
+} from '../lib/enrollmentUtils';
 
 export const enrollmentResolvers = {
   Query: {
@@ -21,21 +27,59 @@ export const enrollmentResolvers = {
           start_date: string;
           end_date?: string;
           frequency?: Array<number>;
-          lesson_rate?: number;
+          week_interval?: 1 | 2;
+          lesson_rate?: 0.25 | 0.5 | 1 | 2;
           status?: 'active' | 'completed' | 'dropped';
-          suspension_periods?: Array<{ start: Date; end: Date }>;
+          suspension_periods?: Array<{ start: string; end: string }>;
         };
       }
     ) => {
+      const startDate = new Date(input.start_date);
+      const endDate = input.end_date ? new Date(input.end_date) : undefined;
+      const suspensionPeriods = (input.suspension_periods ?? []).map((p) => ({
+        start: new Date(p.start),
+        end: new Date(p.end),
+      }));
+
+      if ((input.frequency ?? []).length === 0)
+        throw new Error('At least one weekday must be selected');
+      const course = await Course.findById(input.courseId).lean();
+      if (!course) throw new Error('Course not found');
+
+      const lessonSnapshots = flattenLessonTree(course.lessonTree);
+      if (lessonSnapshots.length === 0)
+        throw new Error('Course has no lessons');
+      const lessonOccurrences = generateLessonOccurrences(
+        lessonSnapshots,
+        input.lesson_rate ?? 1
+      );
+      const scheduledDates = generateScheduledDates(
+        startDate,
+        input.frequency ?? [],
+        input.week_interval ?? 1,
+        suspensionPeriods,
+        lessonOccurrences.length,
+        endDate
+      );
+      if (scheduledDates.length < lessonOccurrences.length)
+        throw new Error(
+          `Not enough scheduled days — ${scheduledDates.length} days available for ${lessonOccurrences.length} lessons`
+        );
+
       const newEnrollment = await Enrollment.create({
         student: input.studentId,
         course: input.courseId,
-        start_date: input.start_date,
-        end_date: input.end_date,
+        start_date: startDate,
+        end_date: endDate,
         frequency: input.frequency,
+        week_interval: input.week_interval,
         lesson_rate: input.lesson_rate,
         status: input.status,
-        suspension_periods: input.suspension_periods,
+        suspension_periods: suspensionPeriods,
+        lesson_snapshot: lessonSnapshots,
+        lesson_occurrences: lessonOccurrences,
+        scheduled_dates: scheduledDates,
+        last_synced_at: new Date(),
       });
 
       return newEnrollment.toObject();
@@ -53,28 +97,129 @@ export const enrollmentResolvers = {
           start_date?: string;
           end_date?: string | null;
           frequency?: Array<number>;
-          lesson_rate?: number;
+          week_interval?: 1 | 2;
+          lesson_rate?: 0.25 | 0.5 | 1 | 2;
           status?: 'active' | 'completed' | 'dropped';
-          suspension_periods?: Array<{ start: Date; end: Date }>;
+          suspension_periods?: Array<{ start: string; end: string }>;
         };
       }
     ) => {
+      if (input.frequency !== undefined && input.frequency.length === 0)
+        throw new Error('At least one weekday must be selected');
+
+      // 1. Fetch existing enrollment
+      const existing = await Enrollment.findById(id);
+      if (!existing) throw new Error('Enrollment not found');
+
+      // 2. Convert incoming dates upfront
+      const suspensionPeriods = input.suspension_periods?.map((p) => ({
+        start: new Date(p.start),
+        end: new Date(p.end),
+      }));
+
+      // 3. Detect what changed
+      const lessonRateChanged =
+        input.lesson_rate !== undefined &&
+        input.lesson_rate !== existing.lesson_rate;
+      const scheduleChanged =
+        input.frequency !== undefined ||
+        input.week_interval !== undefined ||
+        input.suspension_periods !== undefined ||
+        input.start_date !== undefined ||
+        'end_date' in input;
+
+      // 4. Build basic updates
       const updates: Record<string, unknown> = {};
       if (input.studentId !== undefined) updates.student = input.studentId;
       if (input.courseId !== undefined) updates.course = input.courseId;
-      if (input.start_date !== undefined) updates.start_date = input.start_date;
-      if ('end_date' in input) updates.end_date = input.end_date ?? null;
+      if (input.start_date !== undefined)
+        updates.start_date = new Date(input.start_date);
+      if ('end_date' in input)
+        updates.end_date = input.end_date ? new Date(input.end_date) : null;
       if (input.frequency !== undefined) updates.frequency = input.frequency;
+      if (input.week_interval !== undefined)
+        updates.week_interval = input.week_interval;
       if (input.lesson_rate !== undefined)
         updates.lesson_rate = input.lesson_rate;
       if (input.status !== undefined) updates.status = input.status;
-      if (input.suspension_periods !== undefined)
-        updates.suspension_periods = input.suspension_periods;
+      if (suspensionPeriods !== undefined)
+        updates.suspension_periods = suspensionPeriods;
+
+      // 5. Regenerate lesson_occurrences if lesson_rate changed
+      if (lessonRateChanged) {
+        const completedOccurrences = existing.lesson_occurrences.filter(
+          (o) => o.status === 'completed'
+        );
+        const completedLessonIds = new Set(
+          completedOccurrences.flatMap((o) =>
+            o.lessons.map((l) => l.lesson_id.toString())
+          )
+        );
+        const pendingLessons = existing.lesson_snapshot.filter(
+          (l) => !completedLessonIds.has(l._id.toString())
+        );
+
+        const newPendingOccurrences = generateLessonOccurrences(
+          pendingLessons,
+          input.lesson_rate!
+        );
+        const startSequence = completedOccurrences.length + 1;
+        newPendingOccurrences.forEach((o, i) => {
+          o.sequence = startSequence + i;
+        });
+
+        updates.lesson_occurrences = [
+          ...completedOccurrences,
+          ...newPendingOccurrences,
+        ];
+      }
+
+      // 6. Regenerate scheduled_dates if any schedule field changed
+      if (scheduleChanged) {
+        const effectiveOccurrences = lessonRateChanged
+          ? (updates.lesson_occurrences as typeof existing.lesson_occurrences)
+          : existing.lesson_occurrences;
+
+        const startDate = input.start_date
+          ? new Date(input.start_date)
+          : existing.start_date;
+        const endDate =
+          'end_date' in input
+            ? input.end_date
+              ? new Date(input.end_date)
+              : undefined
+            : (existing.end_date ?? undefined);
+        const frequency = input.frequency ?? existing.frequency;
+        const weekInterval = input.week_interval ?? existing.week_interval;
+        const effectiveSuspensions =
+          suspensionPeriods ??
+          existing.suspension_periods?.map((p) => ({
+            start: p.start,
+            end: p.end,
+          })) ??
+          [];
+
+        const newScheduledDates = generateScheduledDates(
+          startDate,
+          frequency,
+          weekInterval,
+          effectiveSuspensions,
+          effectiveOccurrences.length,
+          endDate
+        );
+
+        if (newScheduledDates.length < effectiveOccurrences.length)
+          throw new Error(
+            `Not enough scheduled days — ${newScheduledDates.length} days available for ${effectiveOccurrences.length} lessons`
+          );
+
+        updates.scheduled_dates = newScheduledDates;
+      }
 
       const updatedEnrollment = await Enrollment.findByIdAndUpdate(
         id,
         {
-            $set: updates,
+          $set: updates,
         },
         { returnDocument: 'after', runValidators: true }
       );
@@ -91,9 +236,17 @@ export const enrollmentResolvers = {
     start_date: (parent: { start_date: Date | string | number }) =>
       new Date(parent.start_date).toISOString().slice(0, 10),
     end_date: (parent: { end_date?: Date | string | number | null }) =>
-      parent.end_date ? new Date(parent.end_date).toISOString().slice(0, 10) : null,
+      parent.end_date
+        ? new Date(parent.end_date).toISOString().slice(0, 10)
+        : null,
     enrollment_date: (parent: { enrollment_date: Date | string | number }) =>
       new Date(parent.enrollment_date).toISOString().slice(0, 10),
+    last_synced_at: (parent: { last_synced_at: Date | string | number }) =>
+      new Date(parent.last_synced_at).toISOString().slice(0, 10),
+    scheduled_dates: (parent: {
+      scheduled_dates: Array<Date | string | number>;
+    }) =>
+      parent.scheduled_dates.map((d) => new Date(d).toISOString().slice(0, 10)),
   },
   SuspensionPeriod: {
     start: (parent: { start: Date | string | number }) =>

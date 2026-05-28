@@ -7,7 +7,7 @@ export interface ICourseLessonNode {
   _id: Types.ObjectId;
   kind: CourseLessonNodeKind;
   order: number;
-  title?: string;
+  title: string;
   content?: string;
   note?: string;
   children?: ICourseLessonNode[];
