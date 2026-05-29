@@ -22,9 +22,9 @@ interface ILessonOccurrence {
   completed_date?: Date;
 }
 
-export interface IEnrollment extends Document {
+export interface IEnrollment<TCourse = Types.ObjectId> extends Document {
   student: Types.ObjectId;
-  course: Types.ObjectId;
+  course: TCourse;
   enrollment_date: Date;
   start_date: Date;
   end_date?: Date;

@@ -4,7 +4,14 @@ import { mergeGraphQLResolvers } from './mergeResolvers';
 import { typeDefs } from './typedefs';
 import { enrollmentResolvers } from '../resolvers/enrollmentResolvers';
 import { studentResolvers } from '../resolvers/studentResolvers';
+import { calendarResolvers } from '../resolvers/calendarResolvers';
 
 export { typeDefs };
 
-export const resolvers = mergeGraphQLResolvers(courseResolvers, resourceResolvers, studentResolvers, enrollmentResolvers);
+export const resolvers = mergeGraphQLResolvers(
+  courseResolvers,
+  resourceResolvers,
+  studentResolvers,
+  enrollmentResolvers,
+  calendarResolvers
+);
