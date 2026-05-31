@@ -1,18 +1,24 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import DayView from './components/DayView';
 
-import DayView from "./components/DayView";
-
-export default function CalendarPage() {
+function CalendarContent() {
   const searchParams = useSearchParams();
   const view = searchParams.get('view') ?? 'month';
   const date = searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
   const studentId = searchParams.get('studentId') ?? '';
 
   if (view === 'month') return <p className="p-4 text-gray-500">Month view coming soon.</p>;
-    
+
+  return <DayView studentId={studentId} date={date} />;
+}
+
+export default function CalendarPage() {
   return (
-    <DayView studentId={studentId} date={date} />
+    <Suspense fallback={<p className="p-4 text-gray-500">Loading...</p>}>
+      <CalendarContent />
+    </Suspense>
   );
 }
