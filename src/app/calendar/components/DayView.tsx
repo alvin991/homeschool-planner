@@ -3,9 +3,7 @@ import { useQuery, useMutation } from '@apollo/client/react';
 import { GET_DAY_VIEW, UPDATE_OCCURRENCE_STATUS } from '../api';
 import apolloClient from '@/utils/apolloClient';
 import type { GetCalendarDayViewData, DayViewLesson } from '../types';
-import {
-  ChevronRightIcon,
-} from '@heroicons/react/24/outline';
+import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Nunito } from 'next/font/google';
 
 const nunito = Nunito({
@@ -33,6 +31,10 @@ export default function DayView({
     return () => clearInterval(timer); // cleanup on unmount
   }, []);
 
+  const [updateOccurrenceStatus] = useMutation(UPDATE_OCCURRENCE_STATUS, {
+    client: apolloClient,
+    refetchQueries: [{ query: GET_DAY_VIEW, variables: { studentId, date } }],
+  });
   const { data, loading, error } = useQuery<GetCalendarDayViewData>(
     GET_DAY_VIEW,
     {
@@ -41,8 +43,18 @@ export default function DayView({
       skip: !studentId || !date,
     }
   );
-  if (loading) return <p className="p-4 text-gray-500">Loading...</p>;
-  if (error) return <p className="p-4 text-red-500">Error: {error.message}</p>;
+  if (loading)
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-red-500">Error: {error.message}</p>
+      </div>
+    );
 
   const studentName = data?.calendarDayView.studentName ?? '';
   const lessons = data?.calendarDayView.lessons ?? [];
@@ -51,11 +63,6 @@ export default function DayView({
   const completedLessons = lessons.filter(
     (l) => l.status === 'completed'
   ).length;
-
-  const [updateOccurrenceStatus] = useMutation(UPDATE_OCCURRENCE_STATUS, {
-    client: apolloClient,
-    refetchQueries: [{ query: GET_DAY_VIEW, variables: { studentId, date } }],
-  });
 
   const handleToggleComplete = async (lesson: DayViewLesson) => {
     const newStatus = lesson.status === 'completed' ? 'pending' : 'completed';
@@ -126,8 +133,9 @@ export default function DayView({
                     {lesson.course_title}
                   </p>
                   {lesson.day_number && (
-                    <p 
-                      className={`relative text-lg text-gray-400 ${nunito.className}`}>
+                    <p
+                      className={`relative text-lg text-gray-400 ${nunito.className}`}
+                    >
                       · Day {lesson.day_number} of {lesson.total_days}
                     </p>
                   )}
@@ -138,7 +146,9 @@ export default function DayView({
                   className="flex flex-col justify-between px-4 py-2"
                   style={{ flex: 3, backgroundColor: lesson.subject_color }}
                 >
-                  <p className={`text-lg font-bold text-white ${nunito.className}`}>
+                  <p
+                    className={`text-lg font-bold text-white ${nunito.className}`}
+                  >
                     {lesson.lesson_title}
                   </p>
                   <div className="flex items-center justify-between">
