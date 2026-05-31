@@ -14,6 +14,7 @@ export const calendarTypeDefs = `#graphql
 
     type DayView {
         date: String!
+        studentName: String!
         lessons: [DayViewLesson!]!
     }
 

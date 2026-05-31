@@ -1,6 +1,7 @@
 import Enrollment from '@/models/Enrollment';
 import { ICourse } from '@/models/Course';
 import { ISubject } from '@/models/Subject';
+import Student from '@/models/Student';
 
 type IPopulatedCourse = Omit<ICourse, 'subject'> & { subject: ISubject };
 
@@ -10,6 +11,9 @@ export const calendarResolvers = {
       _: unknown,
       { studentId, date }: { studentId: string; date: string }
     ) => {
+      const student = await Student.findById(studentId).lean();
+      const studentName = student?.name ?? '';
+
       const enrollments = await Enrollment.find({
         student: studentId,
         status: { $in: ['active'] }, // excludes dropped and completed
@@ -37,36 +41,54 @@ export const calendarResolvers = {
       }[] = [];
 
       for (const enrollment of enrollments) {
-        const index = enrollment.scheduled_dates.findIndex(
+        const isScheduledDay = enrollment.scheduled_dates.some(
           (d) => new Date(d).toISOString().slice(0, 10) === date
         );
-        if (index === -1) continue;
+        if (!isScheduledDay) continue;
 
-        const occurrence = enrollment.lesson_occurrences[index];
+        const firstPending = enrollment.lesson_occurrences.find(
+          (o) => o.status === 'pending'
+        );
+        const completedToday = enrollment.lesson_occurrences.filter(
+          (o) =>
+            o.status === 'completed' &&
+            o.completed_date &&
+            new Date(o.completed_date).toISOString().slice(0, 10) === date
+        );
+
+        const occurrences = [
+          ...(firstPending ? [firstPending] : []),
+          ...completedToday,
+        ];
+
+        if (occurrences.length === 0) continue;
+
         const course = enrollment.course as unknown as IPopulatedCourse;
 
-        for (const l of occurrence.lessons) {
-          const snapshot = enrollment.lesson_snapshot.find(
-            (s) => s._id.toString() === l.lesson_id.toString()
-          );
-          dayLessons.push({
-            enrollment_id: enrollment._id,
-            sequence: occurrence.sequence,
-            course_title: course.title,
-            subject_color: course.subject.color,
-            lesson_title: l.lesson_title,
-            content: snapshot?.content ?? '',
-            note: snapshot?.note ?? '',
-            day_number: l.day_number,
-            total_days: l.total_days,
-            status: occurrence.status,
-          });
+        for (const occurrence of occurrences) {
+          for (const l of occurrence.lessons) {
+            const snapshot = enrollment.lesson_snapshot.find(
+              (s) => s._id.toString() === l.lesson_id.toString()
+            );
+            dayLessons.push({
+              enrollment_id: enrollment._id,
+              sequence: occurrence.sequence,
+              course_title: course.title,
+              subject_color: course.subject.color,
+              lesson_title: l.lesson_title,
+              content: snapshot?.content ?? '',
+              note: snapshot?.note ?? '',
+              day_number: l.day_number,
+              total_days: l.total_days,
+              status: occurrence.status,
+            });
+          }
         }
       }
 
       dayLessons.sort((a, b) => a.course_title.localeCompare(b.course_title));
 
-      return { date, lessons: dayLessons };
+      return { date, studentName, lessons: dayLessons };
     },
     calendarMonthView: async (
       _: unknown,
