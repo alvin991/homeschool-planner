@@ -6,7 +6,7 @@ import DayView from "./components/DayView";
 
 export default function CalendarPage() {
   const searchParams = useSearchParams();
-  const view = searchParams.get('view') ?? 'day';
+  const view = searchParams.get('view') ?? 'month';
   const date = searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
   const studentId = searchParams.get('studentId') ?? '';
 

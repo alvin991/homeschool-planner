@@ -12,22 +12,33 @@ export default function NavigationMenu() {
     <nav className="flex items-center gap-1 text-sm text-gray-600">
       <Link
         href="/"
-        className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 font-medium text-gray-800"
+        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 hover:bg-gray-100
+          ${pathname === '/' ? 'bg-gray-100 font-medium text-gray-800' : ''}`}
       >
         🏠 Home
       </Link>
       <Link
         href="/courses"
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 hover:bg-gray-100"
+        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 hover:bg-gray-100
+          ${pathname === '/courses' ? 'bg-gray-100 font-medium text-gray-800' : ''}`}
       >
         📋 Courses
       </Link>
       <Link
         href="/enrollments"
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 hover:bg-gray-100"
+        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 hover:bg-gray-100
+          ${pathname === '/enrollments' ? 'bg-gray-100 font-medium text-gray-800' : ''}`}
       >
         ✅ Enrollments
       </Link>
+      <Link
+        href="/calendar"
+        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 hover:bg-gray-100
+          ${pathname === '/calendar' ? 'bg-gray-100 font-medium text-gray-800' : ''}`}
+      >
+        📅 Calendar
+      </Link>
+
       <details className="relative">
         <summary
           className={`flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-3 py-1.5 marker:hidden hover:bg-gray-100 [&::-webkit-details-marker]:hidden ${
