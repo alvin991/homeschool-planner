@@ -50,4 +50,11 @@ export const sharedInputsTypeDefs = `#graphql
     status: EnrollmentStatus
     suspension_periods: [SuspensionPeriodInput!]
   }
+
+  input UpdateOccurrenceStatusInput {
+    enrollmentId: ID!
+    sequence: Int!
+    status: LessonOccurrenceStatus!
+    completedDate: String
+  }
 `;

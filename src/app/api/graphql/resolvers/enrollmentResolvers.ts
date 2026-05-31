@@ -16,6 +16,40 @@ export const enrollmentResolvers = {
     },
   },
   Mutation: {
+    updateOccurrenceStatus: async (
+      _: unknown,
+      {
+        input,
+      }: {
+        input: {
+          enrollmentId: string;
+          sequence: number;
+          status: string;
+          completedDate?: string;
+        };
+      }
+    ) => {
+      const { enrollmentId, sequence, status, completedDate } = input;
+
+      const enrollment = await Enrollment.findById(enrollmentId);
+      if (!enrollment) throw new Error('Enrollment not found');
+
+      const occurrence = enrollment.lesson_occurrences.find(
+        (o) => o.sequence === sequence
+      );
+      if (!occurrence) throw new Error('Occurrence not found');
+
+      occurrence.status = status as 'pending' | 'completed' | 'skipped';
+      occurrence.completed_date =
+        status === 'completed'
+          ? completedDate
+            ? new Date(completedDate)
+            : new Date()
+          : undefined;
+
+      await enrollment.save();
+      return true;
+    },
     createEnrollment: async (
       _: unknown,
       {

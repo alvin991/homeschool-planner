@@ -3,5 +3,6 @@ export const mutationEnrollmentTypeDefs = `#graphql
     createEnrollment(input: EnrollmentCreateInput!): Enrollment!
     updateEnrollment(id: ID!, input: EnrollmentUpdateInput!): Enrollment!
     deleteEnrollment(id: ID!): Boolean!
+    updateOccurrenceStatus(input: UpdateOccurrenceStatusInput!): Boolean!
   }
 `;
