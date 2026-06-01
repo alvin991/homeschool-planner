@@ -47,7 +47,12 @@ export const calendarResolvers = {
         if (!isScheduledDay) continue;
 
         const firstPending = enrollment.lesson_occurrences.find(
-          (o) => o.status === 'pending'
+          (o) =>
+            o.status === 'pending' &&
+            enrollment.scheduled_dates[o.sequence - 1] !== undefined &&
+            new Date(enrollment.scheduled_dates[o.sequence - 1])
+              .toISOString()
+              .slice(0, 10) === date
         );
         const completedToday = enrollment.lesson_occurrences.filter(
           (o) =>

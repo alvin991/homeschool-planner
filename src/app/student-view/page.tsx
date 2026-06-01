@@ -7,7 +7,7 @@ import DayView from '@/app/calendar/components/DayView';
 function StudentContent() {
   const searchParams = useSearchParams();
   const studentId = searchParams.get('studentId') ?? '';
-  const date = searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
+  const date = searchParams.get('date') ?? undefined;
 
   return <DayView studentId={studentId} date={date} />;
 }

@@ -7,7 +7,7 @@ import DayView from './components/DayView';
 function CalendarContent() {
   const searchParams = useSearchParams();
   const view = searchParams.get('view') ?? 'month';
-  const date = searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
+  const date = searchParams.get('date') ?? undefined;
   const studentId = searchParams.get('studentId') ?? '';
 
   if (view === 'month') return <p className="p-4 text-gray-500">Month view coming soon.</p>;

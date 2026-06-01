@@ -5,6 +5,7 @@ import apolloClient from '@/utils/apolloClient';
 import type { GetCalendarDayViewData, DayViewLesson } from '../types';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Nunito } from 'next/font/google';
+import { localToday } from '@/utils/dateUtils';
 
 const nunito = Nunito({
   subsets: ['latin'],
@@ -15,10 +16,7 @@ type DayViewProps = {
   date?: string;
 };
 
-export default function DayView({
-  studentId,
-  date = new Date().toISOString().slice(0, 10),
-}: DayViewProps) {
+export default function DayView({ studentId, date = localToday() }: DayViewProps) {
   const [now, setNow] = useState<Date | null>(null);
   // selectedLesson drives the detail popup — not yet implemented
   const [selectedLesson, setSelectedLesson] = useState<DayViewLesson | null>(
@@ -26,9 +24,8 @@ export default function DayView({
   );
 
   useEffect(() => {
-    setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer); // cleanup on unmount
+    return () => clearInterval(timer);
   }, []);
 
   const [updateOccurrenceStatus] = useMutation(UPDATE_OCCURRENCE_STATUS, {
@@ -72,6 +69,7 @@ export default function DayView({
           enrollmentId: lesson.enrollment_id,
           sequence: lesson.sequence,
           status: newStatus,
+          completedDate: newStatus === 'completed' ? date : undefined,
         },
       },
     });
@@ -82,7 +80,7 @@ export default function DayView({
       <div className="flex justify-center shrink-0 border-b border-gray-200">
         <div className="w-1/3 p-4">
           <p className={`text-3xl font-bold ${nunito.className}`}>
-            {now?.toLocaleDateString('en-US', {
+            {new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
               day: 'numeric',
@@ -91,7 +89,6 @@ export default function DayView({
             {now?.toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit',
-              second: '2-digit',
             })}
           </p>
 
