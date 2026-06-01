@@ -400,17 +400,19 @@ export default function EnrollmentsPage() {
               Lesson rate{' '}
               <span className="font-normal text-gray-500">(lessons per day)</span>
             </label>
-            <input
+            <select
               id="enroll-rate"
-              type="number"
-              min={0.1}
-              step={0.25}
               value={form.lesson_rate}
               onChange={(e) =>
-                setForm((f) => ({ ...f, lesson_rate: parseFloat(e.target.value) || 0 }))
+                setForm((f) => ({ ...f, lesson_rate: parseFloat(e.target.value) }))
               }
               className="w-32 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+            >
+              <option value={0.25}>0.25</option>
+              <option value={0.5}>0.5</option>
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+            </select>
           </div>
 
           <div>
