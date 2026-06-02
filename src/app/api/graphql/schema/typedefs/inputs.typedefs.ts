@@ -1,6 +1,7 @@
 export const sharedInputsTypeDefs = `#graphql
   input CourseCreateInput {
     title: String!
+    abbr: String!
     grade: String!
     note: String
     publisherName: String!
@@ -10,6 +11,7 @@ export const sharedInputsTypeDefs = `#graphql
 
   input CourseUpdateInput {
     title: String
+    abbr: String
     grade: String
     note: String
     publisherName: String

@@ -1,6 +1,6 @@
 import type { CourseType } from '../types';
 import { countLessonLeaves } from '../courseTree';
-import styles from "./CourseCard.module.css";
+import styles from './CourseCard.module.css';
 
 const CourseCard: React.FC<{ course: CourseType }> = ({ course }) => {
   const lessonTotal =
@@ -9,19 +9,27 @@ const CourseCard: React.FC<{ course: CourseType }> = ({ course }) => {
   return (
     <div className={styles.card}>
       <div className={styles.flexCol}>
-        <div className={styles.title}>{course.title}</div>
+        <div className={styles.title}>
+          {course.title}
+          <span className={styles.abbrBadge}>{course.abbr}</span>
+        </div>
         <div className={styles.metaRow}>
           <div className={styles.publisher}>{course.publisher.name}</div>
           <div className={styles.metaRight}>
             <span className={styles.metaText}>
               {lessonTotal} lesson{lessonTotal !== 1 ? 's' : ''}
             </span>
-            <span className={styles.metaText}>Grade {course.grade || 'N/A'}</span>
+            <span className={styles.metaText}>
+              Grade {course.grade || 'N/A'}
+            </span>
             {(() => {
               // Use CSS variables instead of dynamic Tailwind classes.
               // Map a small set of semantic names to hex values.
               const colorKey = (course.subject.color || '').toLowerCase();
-              const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+              const colorMap: Record<
+                string,
+                { bg: string; text: string; border: string }
+              > = {
                 red: { bg: '#fee2e2', text: '#7f1d1d', border: '#fecaca' },
                 blue: { bg: '#dbeafe', text: '#1e3a8a', border: '#bfdbfe' },
                 green: { bg: '#d1fae5', text: '#065f46', border: '#bbf7d0' },

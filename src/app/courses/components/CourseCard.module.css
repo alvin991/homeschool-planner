@@ -2,7 +2,19 @@
 	font-family: 'Inter', Arial, sans-serif;
 	font-weight: 700;
 	font-size: 1.1rem;
-	color: #222;
+	color: #374151;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.abbrBadge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-family: monospace;
+  color: #9ca3af;
+  align-self: flex-start;
+  margin-top: 2px;
 }
 
 .publisher {
@@ -61,11 +73,4 @@ border: 1px solid var(--badge-border, #e5e7eb);
 .flexCol {
 	display: flex;
 	flex-direction: column;
-}
-
-/* Title styles */
-.title {
-	color: #374151;
-	font-size: 1.1rem;
-	font-weight: 700;
 }

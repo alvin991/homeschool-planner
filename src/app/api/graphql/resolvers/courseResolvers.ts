@@ -34,6 +34,7 @@ export const courseResolvers = {
       }: {
         input: {
           title: string;
+          abbr: string;
           grade: string;
           note?: string;
           publisherName: string;
@@ -56,6 +57,7 @@ export const courseResolvers = {
 
       const course = await Course.create({
         title: input.title,
+        abbr: input.abbr,
         grade: input.grade,
         note: input.note,
         lessonTree: [],
@@ -75,6 +77,7 @@ export const courseResolvers = {
         id: string;
         input: {
           title?: string;
+          abbr?: string;
           grade?: string;
           note?: string;
           publisherName?: string;
@@ -87,6 +90,7 @@ export const courseResolvers = {
       if (!courseDoc) throw new Error('Course not found');
 
       if (input.title !== undefined) courseDoc.title = input.title;
+      if (input.abbr !== undefined) courseDoc.abbr = input.abbr;
       if (input.grade !== undefined) courseDoc.grade = input.grade;
       if (input.note !== undefined) courseDoc.note = input.note;
 

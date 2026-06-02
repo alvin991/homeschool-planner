@@ -28,6 +28,7 @@ type SaveNotice = {
 
 export type CourseFieldErrorKey =
   | 'title'
+  | 'abbr'
   | 'publisherName'
   | 'grade'
   | 'subjectName'
@@ -38,6 +39,7 @@ export function useCourseForm(course?: CourseType | null) {
   const isSavingRef = useRef(false);
 
   const [title, setTitle] = useState(course?.title ?? '');
+  const [abbr, setAbbr] = useState(course?.abbr ?? '');
   const [publisherName, setPublisherName] = useState(course?.publisher?.name ?? '');
   const [grade, setGrade] = useState(course?.grade ?? '');
   const [subjectName, setSubjectName] = useState(course?.subject?.name ?? '');
@@ -86,11 +88,12 @@ export function useCourseForm(course?: CourseType | null) {
   };
 
   /**
-   * Mandatory: title, publisher, grade, subject (name + color so saves match GraphQL input).
+   * Mandatory: title, abbr, publisher, grade, subject (name + color so saves match GraphQL input).
    */
   const validateAndHighlight = useCallback((): boolean => {
     const next: Partial<Record<CourseFieldErrorKey, boolean>> = {};
     if (!title.trim()) next.title = true;
+    if (!abbr.trim()) next.abbr = true;
     if (!publisherName.trim()) next.publisherName = true;
     if (!grade.trim()) next.grade = true;
     if (!subjectName.trim()) {
@@ -101,7 +104,7 @@ export function useCourseForm(course?: CourseType | null) {
     }
     setCourseFieldErrors(next);
     return Object.keys(next).length === 0;
-  }, [title, publisherName, grade, subjectName, subjectColor]);
+  }, [title, abbr, publisherName, grade, subjectName, subjectColor]);
 
   const persistCourse = useCallback(async (): Promise<boolean> => {
     if (isSavingRef.current) return false;
@@ -110,6 +113,7 @@ export function useCourseForm(course?: CourseType | null) {
     setSaveNotice(null);
     const input = {
       title: title.trim(),
+      abbr: abbr.trim(),
       grade: grade.trim(),
       publisherName: publisherName.trim(),
       subjectName: subjectName.trim(),
@@ -151,6 +155,7 @@ export function useCourseForm(course?: CourseType | null) {
     }
   }, [
     title,
+    abbr,
     grade,
     publisherName,
     subjectName,
@@ -188,6 +193,7 @@ export function useCourseForm(course?: CourseType | null) {
       return;
     }
     setTitle(course?.title ?? '');
+    setAbbr(course?.abbr ?? '');
     setPublisherName(course?.publisher?.name ?? '');
     setGrade(course?.grade ?? '');
     setSubjectName(course?.subject?.name ?? '');
@@ -208,6 +214,7 @@ export function useCourseForm(course?: CourseType | null) {
   // Re-sync fields only when switching courses. Listing course.title etc. would reset the form on every refetch and wipe view-mode state.
   useEffect(() => {
     setTitle(course?.title ?? '');
+    setAbbr(course?.abbr ?? '');
     setPublisherName(course?.publisher?.name ?? '');
     setGrade(course?.grade ?? '');
     setSubjectName(course?.subject?.name ?? '');
@@ -229,6 +236,8 @@ export function useCourseForm(course?: CourseType | null) {
   return {
     title,
     setTitle,
+    abbr,
+    setAbbr,
     publisherName,
     setPublisherName,
     grade,

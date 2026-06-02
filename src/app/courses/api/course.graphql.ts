@@ -28,6 +28,7 @@ export const GET_COURSES = gql`
     courses {
       _id
       title
+      abbr
       grade
       publisher {
         _id
@@ -51,6 +52,7 @@ export const UPDATE_COURSE_LESSON_TREE = gql`
     updateCourseLessonTree(id: $id, lessonTree: $lessonTree) {
       _id
       title
+      abbr
       grade
       publisher {
         _id
@@ -88,6 +90,7 @@ export const CREATE_COURSE = gql`
     createCourse(input: $input) {
       _id
       title
+      abbr
       grade
       publisher {
         _id
@@ -107,6 +110,7 @@ export const UPDATE_COURSE = gql`
     updateCourse(id: $id, input: $input) {
       _id
       title
+      abbr
       grade
       publisher {
         _id

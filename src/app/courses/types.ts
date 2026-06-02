@@ -31,6 +31,7 @@ export type PublisherType = {
 export type CourseType = {
   _id: string;
   title: string;
+  abbr: string;
   publisher: PublisherType;
   grade: string;
   subject: SubjectType;

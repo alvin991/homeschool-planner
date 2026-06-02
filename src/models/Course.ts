@@ -43,6 +43,7 @@ CourseLessonNodeSchema.add({
 
 export interface ICourse extends Document {
   title: string;
+  abbr: string;
   grade: string;
   note?: string;
   lessonTree: ICourseLessonNode[];
@@ -52,6 +53,7 @@ export interface ICourse extends Document {
 
 const CourseSchema = new Schema<ICourse>({
   title: { type: String, required: true },
+  abbr: { type: String, required: true },
   grade: { type: String, required: true },
   note: { type: String },
   lessonTree: { type: [CourseLessonNodeSchema], default: [] },

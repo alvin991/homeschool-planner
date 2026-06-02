@@ -51,6 +51,8 @@ export default function CourseForm({ course }: CourseFormNewProps) {
   const {
     title,
     setTitle,
+    abbr,
+    setAbbr,
     publisherName,
     setPublisherName,
     grade,
@@ -123,7 +125,10 @@ export default function CourseForm({ course }: CourseFormNewProps) {
         void toggleEditModeOnDblClick();
       }}
     >
-      <form className="w-full bg-white rounded-lg p-6 space-y-4" onSubmit={handleSubmit}>
+      <form
+        className="w-full bg-white rounded-lg p-6 space-y-4"
+        onSubmit={handleSubmit}
+      >
         {saveNotice ? (
           <div
             className={`rounded-md px-3 py-2 text-sm ${
@@ -166,8 +171,31 @@ export default function CourseForm({ course }: CourseFormNewProps) {
                     <FieldError message="Title is required." />
                   ) : null}
                 </div>
-                <div className="flex flex-col gap-2 flex-[5]">
-                  <label className="block text-sm font-medium text-gray-700" htmlFor="course-publisher">
+                <div className="flex flex-col gap-2 flex-[2]">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Abbreviation
+                    <Req />
+                  </label>
+                  <input
+                    type="text"
+                    value={abbr}
+                    aria-invalid={Boolean(courseFieldErrors.abbr)}
+                    onChange={(e) => {
+                      setAbbr(e.target.value.toUpperCase());
+                      clearFieldError('abbr');
+                    }}
+                    className={baseInput + errRing(courseFieldErrors.abbr)}
+                    maxLength={4}
+                  />
+                  {courseFieldErrors.abbr ? (
+                    <FieldError message="Abbreviation is required." />
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2 flex-[3]">
+                  <label
+                    className="block text-sm font-medium text-gray-700"
+                    htmlFor="course-publisher"
+                  >
                     Publisher
                     <Req />
                   </label>
@@ -180,7 +208,9 @@ export default function CourseForm({ course }: CourseFormNewProps) {
                       setPublisherName(e.target.value);
                       clearFieldError('publisherName');
                     }}
-                    className={baseSelect + errRing(courseFieldErrors.publisherName)}
+                    className={
+                      baseSelect + errRing(courseFieldErrors.publisherName)
+                    }
                   >
                     <option value="">Select publisher…</option>
                     {publisherOptions.map((p) => (
@@ -208,10 +238,15 @@ export default function CourseForm({ course }: CourseFormNewProps) {
                     }}
                     className={baseInput + errRing(courseFieldErrors.grade)}
                   />
-                  {courseFieldErrors.grade ? <FieldError message="Grade is required." /> : null}
+                  {courseFieldErrors.grade ? (
+                    <FieldError message="Grade is required." />
+                  ) : null}
                 </div>
                 <div className="flex flex-col gap-2 flex-[3]">
-                  <label className="block text-sm font-medium text-gray-700" htmlFor="course-subject">
+                  <label
+                    className="block text-sm font-medium text-gray-700"
+                    htmlFor="course-subject"
+                  >
                     Subject
                     <Req />
                   </label>
@@ -221,13 +256,17 @@ export default function CourseForm({ course }: CourseFormNewProps) {
                       value={subjectName}
                       disabled={metaLoading}
                       aria-invalid={Boolean(
-                        courseFieldErrors.subjectName || courseFieldErrors.subjectColor,
+                        courseFieldErrors.subjectName ||
+                        courseFieldErrors.subjectColor
                       )}
                       onChange={(e) => onSubject(e.target.value)}
                       className={
                         'min-w-0 flex-1 ' +
                         baseSelect +
-                        errRing(courseFieldErrors.subjectName || courseFieldErrors.subjectColor)
+                        errRing(
+                          courseFieldErrors.subjectName ||
+                            courseFieldErrors.subjectColor
+                        )
                       }
                     >
                       <option value="">Select subject…</option>
@@ -240,9 +279,12 @@ export default function CourseForm({ course }: CourseFormNewProps) {
                     <SubjectColorSwatch color={displaySubjectColor} />
                   </div>
                   {displaySubjectColor ? (
-                    <p className="text-xs text-gray-500">{displaySubjectColor}</p>
+                    <p className="text-xs text-gray-500">
+                      {displaySubjectColor}
+                    </p>
                   ) : null}
-                  {courseFieldErrors.subjectName || courseFieldErrors.subjectColor ? (
+                  {courseFieldErrors.subjectName ||
+                  courseFieldErrors.subjectColor ? (
                     <FieldError message="Subject is required." />
                   ) : null}
                 </div>
@@ -269,25 +311,41 @@ export default function CourseForm({ course }: CourseFormNewProps) {
           ) : (
             <>
               <div className="flex flex-col flex-[6]">
-                <span className="block text-sm font-medium text-gray-700">Title</span>
+                <span className="block text-sm font-medium text-gray-700">
+                  Title
+                </span>
                 <span className="mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-2xl font-bold text-gray-900">
                   {title}
                 </span>
               </div>
-              <div className="flex flex-col flex-[5]">
-                <span className="block text-sm font-medium text-gray-700">Publisher</span>
+              <div className="flex flex-col flex-[2]">
+                <span className="block text-sm font-medium text-gray-700">
+                  Abbreviation
+                </span>
+                <span className="mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-2xl font-bold text-gray-900">
+                  {abbr}
+                </span>
+              </div>
+              <div className="flex flex-col flex-[3]">
+                <span className="block text-sm font-medium text-gray-700">
+                  Publisher
+                </span>
                 <span className="mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-2xl font-bold text-gray-900">
                   {publisherName}
                 </span>
               </div>
               <div className="flex flex-col flex-[1]">
-                <span className="block text-sm font-medium text-gray-700">Grade</span>
+                <span className="block text-sm font-medium text-gray-700">
+                  Grade
+                </span>
                 <span className="mt-1 block w-full rounded-lg border-gray-200 px-4 py-2 text-2xl font-bold text-gray-900">
                   {grade}
                 </span>
               </div>
               <div className="flex flex-col flex-[3]">
-                <span className="block text-sm font-medium text-gray-700">Subject</span>
+                <span className="block text-sm font-medium text-gray-700">
+                  Subject
+                </span>
                 <div className="mt-1 flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-2">
                   <span className="min-w-0 flex-1 text-2xl font-bold text-gray-900">
                     {subjectName}

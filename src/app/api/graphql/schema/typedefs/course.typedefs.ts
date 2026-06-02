@@ -3,6 +3,7 @@ export const courseTypeDefs = `#graphql
     _id: ID!
     publisher: Publisher!
     title: String!
+    abbr: String!
     grade: String!
     note: String
     lessonTree: [LessonTreeNode!]!
