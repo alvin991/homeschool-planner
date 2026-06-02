@@ -91,7 +91,10 @@ export const calendarResolvers = {
         }
       }
 
-      dayLessons.sort((a, b) => a.course_title.localeCompare(b.course_title));
+      dayLessons.sort((a, b) => {
+        if (a.status === b.status) return a.course_title.localeCompare(b.course_title);
+        return a.status === 'completed' ? 1 : -1;
+      });
 
       return { date, studentName, lessons: dayLessons };
     },

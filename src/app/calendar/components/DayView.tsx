@@ -54,7 +54,10 @@ export default function DayView({ studentId, date = localToday() }: DayViewProps
     );
 
   const studentName = data?.calendarDayView.studentName ?? '';
-  const lessons = data?.calendarDayView.lessons ?? [];
+  const lessons = [...(data?.calendarDayView.lessons ?? [])].sort((a, b) => {
+    if (a.status === b.status) return a.course_title.localeCompare(b.course_title);
+    return a.status === 'completed' ? 1 : -1;
+  });
 
   const totalLessons = lessons.length;
   const completedLessons = lessons.filter(
