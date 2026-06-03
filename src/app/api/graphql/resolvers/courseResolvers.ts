@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import Course, { ICourse } from '@/models/Course';
 import Publisher from '@/models/Publisher';
 import Subject from '@/models/Subject';
@@ -146,5 +147,25 @@ export const courseResolvers = {
       if (!updated) throw new Error('Course not found');
       return updated;
     },
+    bulkCreateLessons: async (
+      _: unknown,
+      { courseId, prefix, range }: { courseId: string; prefix: string; range: number },
+    ) => {
+      const courseDoc = await Course.findById(courseId);
+      if (!courseDoc) throw new Error('Course not found');
+
+      const existingLessons = countLessonLeaves(courseDoc.lessonTree);
+      const newLessons = Array.from({ length: range }, (_, i) => ({
+        _id: new Types.ObjectId(),
+        kind: 'lesson' as const,
+        title: `${prefix} ${existingLessons + i + 1}`,
+        order: existingLessons + i + 1,
+      }));
+
+      courseDoc.lessonTree.push(...newLessons);
+      await courseDoc.save();
+
+      return await Course.findById(courseDoc._id).lean().populate('subject').populate('publisher');
+    }
   },
 };

@@ -55,6 +55,7 @@ const FORM_MODES = [
   'folder-new',
   'folder-view',
   'folder-edit',
+  'lessons-bulk'
 ] as const;
 
 export type FormModeType = (typeof FORM_MODES)[number];

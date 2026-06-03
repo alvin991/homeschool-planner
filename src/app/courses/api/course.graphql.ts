@@ -124,3 +124,28 @@ export const UPDATE_COURSE = gql`
     }
   }
 `;
+
+export const BULK_CREATE_LESSONS = gql`
+  mutation BulkCreateLessons($courseId: ID!, $prefix: String!, $range: Int!) {
+    bulkCreateLessons(courseId: $courseId, prefix: $prefix, range: $range) {
+      _id
+      title
+      abbr
+      grade
+      publisher {
+        _id
+        name
+      }
+      subject {
+        _id
+        name
+        color
+      }
+      lessonTree {
+        ${LESSON_TREE_NODE_FIELDS}
+      }
+      lessonCount
+    }
+  }
+`;
+

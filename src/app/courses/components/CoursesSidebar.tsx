@@ -71,12 +71,21 @@ export default function CoursesSidebar() {
     })();
   };
 
+  const handleBulkLessonsClick = () => {
+    void (async () => {
+      if (!(await runDetailFlush())) return;
+      if (!(await runCourseFlush())) return;
+      setFormMode('lessons-bulk');
+    })();
+  }
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <div className="shrink-0">
         <SidebarHeader
           onClickAddLesson={handleNewLessonClick}
           onClickAddFolder={handleNewFolderClick}
+          onClickAddBulkLessons={handleBulkLessonsClick}
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">

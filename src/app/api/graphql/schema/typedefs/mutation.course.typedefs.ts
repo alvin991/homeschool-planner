@@ -4,5 +4,6 @@ export const mutationCourseTypeDefs = `#graphql
     createCourse(input: CourseCreateInput!): Course!
     updateCourse(id: ID!, input: CourseUpdateInput!): Course!
     updateCourseLessonTree(id: ID!, lessonTree: [LessonTreeNodeInput!]!): Course!
+    bulkCreateLessons(courseId: ID!, prefix: String!, range: Int!): Course!
   }
 `;

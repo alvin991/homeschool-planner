@@ -5,6 +5,7 @@ import FolderForm from './FolderForm';
 import LessonForm from './LessonForm';
 import { useCoursesUI } from '../CoursesUIContext';
 import CourseEmpty from './CourseEmpty';
+import BulkLessonsForm from './BulkLessonsForm';
 
 export type CourseDetailsProps = {
   course: CourseType;
@@ -25,6 +26,7 @@ function CourseDetails({ course }: CourseDetailsProps) {
   const showFolderForm =
     formMode === 'folder-new' || formMode === 'folder-view' || formMode === 'folder-edit';
   const isNewCourse = formMode === 'course-new' || !course._id;
+  const showBulkLessonsForm = formMode === 'lessons-bulk';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -35,11 +37,15 @@ function CourseDetails({ course }: CourseDetailsProps) {
             After saving the course, you can add lessons and folders from the left panel.
           </p>
         </div>
-      ) : !showLessonForm && !showFolderForm ? (
+      ) : !showLessonForm && !showFolderForm && !showBulkLessonsForm ? (
         <CourseEmpty courseId={course._id} />
       ) : (
         <>
-          {showLessonForm ? (
+          {showBulkLessonsForm ? (
+            <BulkLessonsForm 
+              course={course}
+            />
+           ) : showLessonForm ? (
             <LessonForm
               key={lessonForForm?._id ?? selectedLessonTreeId ?? 'none'}
               course={course}
