@@ -20,6 +20,7 @@ function CoursesList({ courses, handleCourseClick }: CoursesListProps) {
     setSelectedCourse({
       _id: '',
       title: '',
+      abbr: '',
       grade: '',
       publisher: { _id: '', name: '' },
       subject: { _id: '', name: '', color: '' },
