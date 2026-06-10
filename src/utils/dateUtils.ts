@@ -9,3 +9,19 @@ export function localToday(): string {
     String(d.getDate()).padStart(2, '0')
   );
 }
+
+export function getDaysInCurrentMonth(): number {
+  const today = new Date();
+  const year = today.getFullYear();
+  const nextMonth = today.getMonth() + 1;
+
+  return new Date(year, nextMonth, 0).getDate();
+}
+
+export function getFirstWeekdayOfCurrentMonth(): number {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+
+  return new Date(year, month, 1).getDay();
+}
