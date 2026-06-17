@@ -1,7 +1,7 @@
 'use client';
 
 import { getDaysInCurrentMonth, getFirstWeekdayOfCurrentMonth } from '@/utils/dateUtils';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DayCell from './DayCell';
 
 export default function CalendarGrid() {
@@ -21,7 +21,14 @@ export default function CalendarGrid() {
   // at the next local midnight (or use an interval). Keep in mind timers
   // must run in the browser (useEffect) and this will re-render the
   // component when `today` changes.
-  const [today, setToday] = useState<number>(() => new Date().getDate());
+  const [mounted, setMounted] = useState(false);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const today = mounted ? new Date().getDate() : null;
 
   const days = Array.from({ length: 42 }, (_, i) => {
     const dayNumber = i - firstDayOfMonth + 1;
