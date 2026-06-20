@@ -22,3 +22,25 @@ export type DayView = {
 export type GetCalendarDayViewData = {
   calendarDayView: DayView;
 };
+
+export type MonthViewLesson = {
+  enrollment_id: string;
+  course_title: string;
+  subject_color: string;
+  lesson_title: string;
+  status: LessonOccurrenceStatus;
+};
+
+export type MonthViewDay = {
+  date: string;
+  lessons: MonthViewLesson[];
+};
+
+export type MonthViewData = {
+  month: string;
+  days: MonthViewDay[];
+};
+
+export type GetCalendarMonthViewData = {
+  calendarMonthView: MonthViewData;
+};
