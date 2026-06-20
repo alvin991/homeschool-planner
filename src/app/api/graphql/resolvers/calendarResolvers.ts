@@ -92,7 +92,8 @@ export const calendarResolvers = {
       }
 
       dayLessons.sort((a, b) => {
-        if (a.status === b.status) return a.course_title.localeCompare(b.course_title);
+        if (a.status === b.status)
+          return a.course_title.localeCompare(b.course_title);
         return a.status === 'completed' ? 1 : -1;
       });
 
@@ -102,7 +103,98 @@ export const calendarResolvers = {
       _: unknown,
       { studentId, month }: { studentId: string; month: string }
     ) => {
-      return { month, days: [] }; // placeholder until we implement this in the data source
+      // 1. Parse month ("2026-06") into startDate / endDate strings
+      const [year, monthNum] = month.split('-').map(Number);
+      const startDate = `${month}-01`;
+      const lastDay = new Date(year, monthNum, 0).getDate();
+      const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+
+      // 2. Fetch student name
+      const student = await Student.findById(studentId).lean();
+      const studentName = student?.name ?? '';
+
+      // 3. Query enrollments that overlap this month (same filter as calendarDayView, but date range)
+      const enrollments = await Enrollment.find({
+        student: studentId,
+        status: { $in: ['active'] },
+        start_date: { $lte: endDate },
+        $or: [
+          { end_date: { $gte: startDate } },
+          { end_date: null },
+          { end_date: { $exists: false } },
+        ],
+      })
+        .populate({ path: 'course', populate: { path: 'subject' } })
+        .lean();
+
+      // 4. Build a Map<date-string, lessons[]>
+      const dayMap = new Map<
+        string,
+        {
+          enrollment_id: unknown;
+          sequence: number;
+          course_title: string;
+          subject_color: string;
+          lesson_title: string;
+          content: string;
+          note: string;
+          day_number?: number;
+          total_days?: number;
+          status: string;
+        }[]
+      >();
+
+      for (const enrollment of enrollments) {
+        const course = enrollment.course as unknown as IPopulatedCourse;
+
+        // Iterate scheduled_dates (0-indexed); sequence is 1-based
+        for (let i = 0; i < enrollment.scheduled_dates.length; i++) {
+          const schedDate = new Date(enrollment.scheduled_dates[i])
+            .toISOString()
+            .slice(0, 10);
+          if (schedDate < startDate || schedDate > endDate) continue;
+
+          const occurrence = enrollment.lesson_occurrences.find(
+            (o) => o.sequence === i + 1
+          );
+          if (!occurrence || occurrence.status === 'skipped') continue;
+
+          if (!dayMap.has(schedDate)) dayMap.set(schedDate, []);
+          const dayLessons = dayMap.get(schedDate)!;
+
+          for (const l of occurrence.lessons) {
+            const snapshot = enrollment.lesson_snapshot.find(
+              (s) => s._id.toString() === l.lesson_id.toString()
+            );
+            dayLessons.push({
+              enrollment_id: enrollment._id,
+              sequence: occurrence.sequence,
+              course_title: course.title,
+              subject_color: course.subject.color,
+              lesson_title: l.lesson_title,
+              content: snapshot?.content ?? '',
+              note: snapshot?.note ?? '',
+              day_number: l.day_number,
+              total_days: l.total_days,
+              status: occurrence.status,
+            });
+          }
+        }
+      }
+
+      // 5. Convert Map to sorted days array (sort lessons within each day too)
+      const days = Array.from(dayMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, lessons]) => {
+          lessons.sort((a, b) => {
+            if (a.status === b.status)
+              return a.course_title.localeCompare(b.course_title);
+            return a.status === 'completed' ? 1 : -1;
+          });
+          return { date, studentName, lessons };
+        });
+
+      return { month, days };
     },
   },
 };
