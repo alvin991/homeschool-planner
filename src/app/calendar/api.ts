@@ -26,3 +26,22 @@ export const UPDATE_OCCURRENCE_STATUS = gql`
     updateOccurrenceStatus(input: $input)
   }
 `;
+
+export const GET_MONTH_VIEW = gql`
+  query GetMonthView($studentId: ID!, $month: String!) {
+    calendarMonthView(studentId: $studentId, month: $month) {
+      month
+      days {
+        date
+        studentName
+        lessons {
+          enrollment_id
+          course_title
+          subject_color
+          lesson_title
+          status
+        }
+      }
+    }
+  }
+`;
