@@ -1,15 +1,25 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { MonthViewLesson } from '../types';
 
-export default function DayCell({ dayNumber, isValid, sampleLessons }: { dayNumber: number; isValid: boolean; sampleLessons: string[] }) {
+export default function DayCell({
+  dayNumber,
+  isValid,
+  lessons,
+}: {
+  dayNumber: number;
+  isValid: boolean;
+  lessons: MonthViewLesson[];
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hasOverflow, setHasOverflow] = useState(false);
 
   useEffect(() => {
     const checkOverflow = () => {
       if (scrollRef.current) {
-        const isOverflowing = scrollRef.current.scrollHeight > scrollRef.current.clientHeight;
+        const isOverflowing =
+          scrollRef.current.scrollHeight > scrollRef.current.clientHeight;
         setHasOverflow(isOverflowing);
       }
     };
@@ -17,7 +27,7 @@ export default function DayCell({ dayNumber, isValid, sampleLessons }: { dayNumb
     checkOverflow();
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
-  }, [sampleLessons]);
+  }, [lessons]);
 
   return (
     <div className="relative p-2 bg-white min-h-0 border border-gray-200 overflow-hidden">
@@ -28,15 +38,22 @@ export default function DayCell({ dayNumber, isValid, sampleLessons }: { dayNumb
       )}
       {hasOverflow && (
         <div className="absolute right-2 top-2 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
-          {sampleLessons.length} lessons
+          {lessons.length} lessons
         </div>
       )}
 
-      <div ref={scrollRef} className="mt-6 h-[calc(100%-1.5rem)] overflow-auto pr-1">
+      <div
+        ref={scrollRef}
+        className="mt-6 h-[calc(100%-1.5rem)] overflow-auto pr-1"
+      >
         <div className="space-y-2">
-          {sampleLessons.map((lesson, idx) => (
-            <div key={idx} className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-sm">
-              {lesson}
+          {lessons.map((lesson, idx) => (
+            <div
+              key={idx}
+              className="flex rounded-md border overflow-hidden px-2"
+              style={{ opacity: lesson.status === 'completed' ? 0.5 : 1, backgroundColor: lesson.subject_color, color: 'white'}}
+            >
+                {lesson.course_abbr}: {lesson.lesson_title}
             </div>
           ))}
         </div>

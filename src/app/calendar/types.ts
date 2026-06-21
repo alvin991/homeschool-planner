@@ -26,6 +26,7 @@ export type GetCalendarDayViewData = {
 export type MonthViewLesson = {
   enrollment_id: string;
   course_title: string;
+  course_abbr: string;
   subject_color: string;
   lesson_title: string;
   status: LessonOccurrenceStatus;

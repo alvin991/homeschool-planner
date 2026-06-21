@@ -31,6 +31,7 @@ export const calendarResolvers = {
         enrollment_id: unknown;
         sequence: number;
         course_title: string;
+        course_abbr: string;
         subject_color: string;
         lesson_title: string;
         content: string;
@@ -79,6 +80,7 @@ export const calendarResolvers = {
               enrollment_id: enrollment._id,
               sequence: occurrence.sequence,
               course_title: course.title,
+              course_abbr: course.abbr,
               subject_color: course.subject.color,
               lesson_title: l.lesson_title,
               content: snapshot?.content ?? '',
@@ -134,6 +136,7 @@ export const calendarResolvers = {
           enrollment_id: unknown;
           sequence: number;
           course_title: string;
+          course_abbr: string;
           subject_color: string;
           lesson_title: string;
           content: string;
@@ -170,6 +173,7 @@ export const calendarResolvers = {
               enrollment_id: enrollment._id,
               sequence: occurrence.sequence,
               course_title: course.title,
+              course_abbr: course.abbr,
               subject_color: course.subject.color,
               lesson_title: l.lesson_title,
               content: snapshot?.content ?? '',

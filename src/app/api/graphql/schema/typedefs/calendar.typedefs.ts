@@ -3,6 +3,7 @@ export const calendarTypeDefs = `#graphql
         enrollment_id: ID!
         sequence: Int!
         course_title: String!
+        course_abbr: String!
         subject_color: String!
         lesson_title: String!
         content: String!

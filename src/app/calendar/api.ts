@@ -37,6 +37,7 @@ export const GET_MONTH_VIEW = gql`
         lessons {
           enrollment_id
           course_title
+          course_abbr
           subject_color
           lesson_title
           status
