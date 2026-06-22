@@ -1,14 +1,23 @@
 'use client';
 
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { shiftMonth } from '@/utils/dateUtils';
 
-export default function MonthTopBar() {
+type MonthTopBarProps = {
+  month: string;
+  onMonthChange: (month: string) => void;
+};
+
+export default function MonthTopBar({ month, onMonthChange }: MonthTopBarProps) {
+  const [year, monthNum] = month.split('-').map(Number);
+  const formattedSelectedMonth = new Date(year, monthNum - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+
   const onPrev = () => {
-    console.log('Previous month');
+    onMonthChange(shiftMonth(month, -1));
   };
 
   const onNext = () => {
-    console.log('Next month');
+    onMonthChange(shiftMonth(month, 1));
   };
 
   return (
@@ -22,7 +31,7 @@ export default function MonthTopBar() {
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
-        <div className="text-lg font-semibold">June 2026</div>
+        <div className="mx-2 text-lg font-semibold">{formattedSelectedMonth}</div>
 
         <button
           onClick={onNext}

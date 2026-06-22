@@ -5,14 +5,16 @@ import { GET_MONTH_VIEW } from '../api';
 import { GetCalendarMonthViewData } from '../types';
 import CalendarGrid from './CalendarGrid';
 import MonthTopBar from './MonthTopBar';
+import { useState } from 'react';
 
 type MonthViewProps = {
   studentId: string;
   month: string;
 };
 
-export default function MonthView({ studentId, month }: MonthViewProps) {
-  console.log('MonthView props:', { studentId, month });
+export default function MonthView({ studentId, month: initialMonth }: MonthViewProps) {
+  console.log('MonthView props:', { studentId, initialMonth });
+  const [month, setMonth] = useState(initialMonth);
   const { data, loading, error } = useQuery<GetCalendarMonthViewData>(
     GET_MONTH_VIEW,
     {
@@ -41,7 +43,7 @@ export default function MonthView({ studentId, month }: MonthViewProps) {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <MonthTopBar />
+      <MonthTopBar month={month} onMonthChange={setMonth} />
       <CalendarGrid days={days} />
     </div>
   );
