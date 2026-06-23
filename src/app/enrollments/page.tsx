@@ -63,39 +63,73 @@ export default function EnrollmentsPage() {
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { loading, error, data } = useQuery<GetEnrollmentsData>(GET_ENROLLMENTS, {
-    client: apolloClient,
-    variables: { studentId: selectedStudentId },
-    skip: !selectedStudentId,
-  });
+  const { loading, error, data } = useQuery<GetEnrollmentsData>(
+    GET_ENROLLMENTS,
+    {
+      client: apolloClient,
+      variables: { studentId: selectedStudentId },
+      skip: !selectedStudentId,
+    }
+  );
 
   type CreateEnrollmentMut = { createEnrollment: EnrollmentRow };
-  const [createEnrollment, { loading: creating }] = useMutation<CreateEnrollmentMut>(CREATE_ENROLLMENT, {
-    client: apolloClient,
-    refetchQueries: selectedStudentId
-      ? [{ query: GET_ENROLLMENTS, variables: { studentId: selectedStudentId } }]
-      : [],
-  });
-  const [updateEnrollment, { loading: updating }] = useMutation(UPDATE_ENROLLMENT, {
-    client: apolloClient,
-    refetchQueries: selectedStudentId
-      ? [{ query: GET_ENROLLMENTS, variables: { studentId: selectedStudentId } }]
-      : [],
-  });
-  const [deleteEnrollment, { loading: deleting }] = useMutation(DELETE_ENROLLMENT, {
-    client: apolloClient,
-    refetchQueries: selectedStudentId
-      ? [{ query: GET_ENROLLMENTS, variables: { studentId: selectedStudentId } }]
-      : [],
-  });
+  const [createEnrollment, { loading: creating }] =
+    useMutation<CreateEnrollmentMut>(CREATE_ENROLLMENT, {
+      client: apolloClient,
+      refetchQueries: selectedStudentId
+        ? [
+            {
+              query: GET_ENROLLMENTS,
+              variables: { studentId: selectedStudentId },
+            },
+          ]
+        : [],
+    });
+  const [updateEnrollment, { loading: updating }] = useMutation(
+    UPDATE_ENROLLMENT,
+    {
+      client: apolloClient,
+      refetchQueries: selectedStudentId
+        ? [
+            {
+              query: GET_ENROLLMENTS,
+              variables: { studentId: selectedStudentId },
+            },
+          ]
+        : [],
+    }
+  );
+  const [deleteEnrollment, { loading: deleting }] = useMutation(
+    DELETE_ENROLLMENT,
+    {
+      client: apolloClient,
+      refetchQueries: selectedStudentId
+        ? [
+            {
+              query: GET_ENROLLMENTS,
+              variables: { studentId: selectedStudentId },
+            },
+          ]
+        : [],
+    }
+  );
 
-  const students = useMemo(() => studentsData?.students ?? [], [studentsData?.students]);
-  const courses = useMemo(() => coursesData?.courses ?? [], [coursesData?.courses]);
-  const enrollments = useMemo(() => data?.enrollments ?? [], [data?.enrollments]);
+  const students = useMemo(
+    () => studentsData?.students ?? [],
+    [studentsData?.students]
+  );
+  const courses = useMemo(
+    () => coursesData?.courses ?? [],
+    [coursesData?.courses]
+  );
+  const enrollments = useMemo(
+    () => data?.enrollments ?? [],
+    [data?.enrollments]
+  );
 
   const courseMap = useMemo(
     () => new Map<string, CourseSlim>(courses.map((c) => [c._id, c])),
-    [courses],
+    [courses]
   );
 
   const resetForm = () => {
@@ -111,7 +145,10 @@ export default function EnrollmentsPage() {
       weekdays: [...e.weekdays],
       lesson_rate: e.lesson_rate,
       status: e.status,
-      suspension_periods: e.suspension_periods.map((p) => ({ start: p.start, end: p.end })),
+      suspension_periods: e.suspension_periods.map((p) => ({
+        start: p.start,
+        end: p.end,
+      })),
     });
     setFormError(null);
   };
@@ -156,7 +193,9 @@ export default function EnrollmentsPage() {
     }
     for (const p of form.suspension_periods) {
       if (!p.start || !p.end) {
-        setFormError('All suspension periods must have both a start and end date.');
+        setFormError(
+          'All suspension periods must have both a start and end date.'
+        );
         return;
       }
       if (p.start > p.end) {
@@ -193,7 +232,8 @@ export default function EnrollmentsPage() {
 
   const handleDelete = async () => {
     if (!selectedId || isCreating) return;
-    if (!window.confirm('Delete this enrollment? This cannot be undone.')) return;
+    if (!window.confirm('Delete this enrollment? This cannot be undone.'))
+      return;
     setFormError(null);
     try {
       await deleteEnrollment({ variables: { id: selectedId } });
@@ -218,7 +258,11 @@ export default function EnrollmentsPage() {
     }));
   };
 
-  const updateSuspension = (index: number, field: 'start' | 'end', value: string) => {
+  const updateSuspension = (
+    index: number,
+    field: 'start' | 'end',
+    value: string
+  ) => {
     setForm((f) => {
       const periods = [...f.suspension_periods];
       periods[index] = { ...periods[index], [field]: value };
@@ -261,7 +305,10 @@ export default function EnrollmentsPage() {
   const list = (
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div>
-        <label htmlFor="student-filter" className="mb-1 block text-xs font-medium text-gray-500">
+        <label
+          htmlFor="student-filter"
+          className="mb-1 block text-xs font-medium text-gray-500"
+        >
           Student
         </label>
         <select
@@ -289,7 +336,9 @@ export default function EnrollmentsPage() {
           onSelect={handleSelect}
         />
       ) : (
-        <p className="text-sm text-gray-400">Select a student to see their enrollments.</p>
+        <p className="text-sm text-gray-400">
+          Select a student to see their enrollments.
+        </p>
       )}
     </div>
   );
@@ -311,7 +360,10 @@ export default function EnrollmentsPage() {
     if (!isCreating && !selectedId) {
       return (
         <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-center text-sm text-gray-500">
-          <p>Select an enrollment from the list, or use &quot;Add Enrollment&quot; on the left.</p>
+          <p>
+            Select an enrollment from the list, or use &quot;Add
+            Enrollment&quot; on the left.
+          </p>
         </div>
       );
     }
@@ -323,13 +375,18 @@ export default function EnrollmentsPage() {
         </h2>
         <div className="space-y-5">
           <div>
-            <label htmlFor="enroll-course" className="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="enroll-course"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
               Course
             </label>
             <select
               id="enroll-course"
               value={form.courseId}
-              onChange={(e) => setForm((f) => ({ ...f, courseId: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, courseId: e.target.value }))
+              }
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Select a course…</option>
@@ -343,34 +400,62 @@ export default function EnrollmentsPage() {
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label htmlFor="enroll-start-date" className="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="enroll-start-date"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Start date <span className="text-red-500">*</span>
               </label>
               <input
                 id="enroll-start-date"
                 type="date"
                 value={form.start_date}
-                onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, start_date: e.target.value }))
+                }
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
             <div className="flex-1">
-              <label htmlFor="enroll-end-date" className="mb-1 block text-sm font-medium text-gray-700">
-                End date <span className="font-normal text-gray-500">(optional)</span>
-              </label>
-              <input
-                id="enroll-end-date"
-                type="date"
-                value={form.end_date}
-                min={form.start_date || undefined}
-                onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+              <div className="mb-1 flex items-center gap-2">
+                <label
+                  htmlFor="enroll-end-date"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  End date{' '}
+                  <span className="font-normal text-gray-500">(optional)</span>
+                </label>
+                <input
+                  type="checkbox"
+                  checked={form.end_date !== ''}
+                  onChange={(e) => {
+                    if (!e.target.checked) {
+                      setForm((f) => ({ ...f, end_date: '' }));
+                    } else {
+                      setForm((f) => ({ ...f, end_date: f.start_date }));
+                    }
+                  }}
+                />
+              </div>
+              {form.end_date !== '' && (
+                <input
+                  id="enroll-end-date"
+                  type="date"
+                  value={form.end_date}
+                  min={form.start_date || undefined}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, end_date: e.target.value }))
+                  }
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              )}
             </div>
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-gray-700">Lesson days</p>
+            <p className="mb-2 text-sm font-medium text-gray-700">
+              Lesson days
+            </p>
             <div className="flex flex-wrap gap-2">
               {WEEKDAYS.map((day) => {
                 const active = form.weekdays.includes(day.value);
@@ -398,13 +483,18 @@ export default function EnrollmentsPage() {
               className="mb-1 block text-sm font-medium text-gray-700"
             >
               Lesson rate{' '}
-              <span className="font-normal text-gray-500">(lessons per day)</span>
+              <span className="font-normal text-gray-500">
+                (lessons per day)
+              </span>
             </label>
             <select
               id="enroll-rate"
               value={form.lesson_rate}
               onChange={(e) =>
-                setForm((f) => ({ ...f, lesson_rate: parseFloat(e.target.value) }))
+                setForm((f) => ({
+                  ...f,
+                  lesson_rate: parseFloat(e.target.value),
+                }))
               }
               className="w-32 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
@@ -426,7 +516,10 @@ export default function EnrollmentsPage() {
               id="enroll-status"
               value={form.status}
               onChange={(e) =>
-                setForm((f) => ({ ...f, status: e.target.value as EnrollmentStatus }))
+                setForm((f) => ({
+                  ...f,
+                  status: e.target.value as EnrollmentStatus,
+                }))
               }
               className="w-40 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
@@ -440,7 +533,9 @@ export default function EnrollmentsPage() {
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-700">Suspension periods</p>
+              <p className="text-sm font-medium text-gray-700">
+                Suspension periods
+              </p>
               <button
                 type="button"
                 onClick={addSuspension}
@@ -458,14 +553,18 @@ export default function EnrollmentsPage() {
                     <input
                       type="date"
                       value={period.start}
-                      onChange={(e) => updateSuspension(i, 'start', e.target.value)}
+                      onChange={(e) =>
+                        updateSuspension(i, 'start', e.target.value)
+                      }
                       className="rounded-md border border-gray-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
                     <span className="text-sm text-gray-400">—</span>
                     <input
                       type="date"
                       value={period.end}
-                      onChange={(e) => updateSuspension(i, 'end', e.target.value)}
+                      onChange={(e) =>
+                        updateSuspension(i, 'end', e.target.value)
+                      }
                       className="rounded-md border border-gray-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
                     <button
@@ -482,7 +581,9 @@ export default function EnrollmentsPage() {
             )}
           </div>
 
-          {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
+          {formError ? (
+            <p className="text-sm text-red-600">{formError}</p>
+          ) : null}
 
           <div className="flex flex-wrap gap-2 pt-2">
             <button
