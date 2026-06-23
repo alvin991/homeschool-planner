@@ -13,7 +13,6 @@ type MonthViewProps = {
 };
 
 export default function MonthView({ studentId, month: initialMonth }: MonthViewProps) {
-  console.log('MonthView props:', { studentId, initialMonth });
   const [month, setMonth] = useState(initialMonth);
   const { data, loading, error } = useQuery<GetCalendarMonthViewData>(
     GET_MONTH_VIEW,
@@ -36,15 +35,15 @@ export default function MonthView({ studentId, month: initialMonth }: MonthViewP
         <p className="text-red-500">Error: {error.message}</p>
       </div>
     );
-  const returnMonth = data?.calendarMonthView.month ?? '';
-  console.log('Fetched month from API:', returnMonth);
+  
+  // TODO: midnight-rollover — add a timer that updates `today` at local midnight
+  const today = new Date();
   const days = data?.calendarMonthView.days ?? [];
-  console.log('Fetched days from API:', days);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <MonthTopBar month={month} onMonthChange={setMonth} />
-      <CalendarGrid days={days} />
+      <MonthTopBar month={month} onMonthChange={setMonth} today={today} />
+      <CalendarGrid days={days} today={today} />
     </div>
   );
 }

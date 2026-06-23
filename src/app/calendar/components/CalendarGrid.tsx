@@ -4,11 +4,15 @@ import {
   getDaysInCurrentMonth,
   getFirstWeekdayOfCurrentMonth,
 } from '@/utils/dateUtils';
-// import { useEffect, useState } from 'react';
 import DayCell from './DayCell';
 import { MonthViewDay } from '../types';
 
-export default function CalendarGrid({ days }: { days: MonthViewDay[] }) {
+type CalendarGridProps = {
+  days: MonthViewDay[];
+  today: Date;
+};
+
+export default function CalendarGrid({ days, today }: CalendarGridProps) {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const weekdaysHeader = daysOfWeek.map((day) => (
@@ -22,20 +26,9 @@ export default function CalendarGrid({ days }: { days: MonthViewDay[] }) {
 
   const numOfDaysInMonth = getDaysInCurrentMonth();
   const firstDayOfMonth = getFirstWeekdayOfCurrentMonth();
-  // TODO: midnight-rollover
-  // If you want `today` to update automatically at midnight while the
-  // page is open, add a timer that sets `today` to `new Date().getDate()`
-  // at the next local midnight (or use an interval). Keep in mind timers
-  // must run in the browser (useEffect) and this will re-render the
-  // component when `today` changes.
-  // const [mounted, setMounted] = useState(false);
-
-  // // eslint-disable-next-line react-hooks/exhaustive-deps
-  // useEffect(() => {
-  //   setMounted(true);
-  // }, []);
-
-  // const today = mounted ? new Date().getDate() : null;
+  const todayDay = today.getDate();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const isCurrentMonth = currentMonth === days[0]?.date.slice(0, 7);
 
   const lessonsByDay = new Map(
     days.map((d) => [parseInt(d.date.slice(8, 10), 10), d.lessons])
@@ -46,12 +39,15 @@ export default function CalendarGrid({ days }: { days: MonthViewDay[] }) {
     const isValid = dayNumber > 0 && dayNumber <= numOfDaysInMonth;
     const lessons = isValid ? (lessonsByDay.get(dayNumber) ?? []) : [];
 
+    const isToday = isValid && isCurrentMonth && dayNumber === todayDay;
+
     return (
       <DayCell
         key={i}
         dayNumber={dayNumber}
         isValid={isValid}
         lessons={lessons}
+        isToday={isToday}
       />
     );
   });
