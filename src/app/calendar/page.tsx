@@ -9,7 +9,7 @@ function CalendarContent() {
   const searchParams = useSearchParams();
   const view = searchParams.get('view') ?? 'month';
   const date = searchParams.get('date') ?? undefined;
-  const studentId = searchParams.get('studentId') ?? '6a221c10e8f7d2867590f1a5';
+  const studentId = searchParams.get('studentId') ?? process.env.NEXT_PUBLIC_DEFAULT_STUDENT_ID ?? '6a221c10e8f7d2867590f1a5';
   const month = searchParams.get('month') ?? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
 
   if (view === 'month') return <MonthView studentId={studentId} month={month} />;
