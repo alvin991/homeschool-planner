@@ -43,7 +43,7 @@ export default function MonthView({ studentId, month: initialMonth }: MonthViewP
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <MonthTopBar month={month} onMonthChange={setMonth} today={today} />
-      <CalendarGrid days={days} today={today} />
+      <CalendarGrid days={days} today={today} month={month} />
     </div>
   );
 }

@@ -1,18 +1,15 @@
 'use client';
 
-import {
-  getDaysInCurrentMonth,
-  getFirstWeekdayOfCurrentMonth,
-} from '@/utils/dateUtils';
 import DayCell from './DayCell';
 import { MonthViewDay } from '../types';
 
 type CalendarGridProps = {
   days: MonthViewDay[];
   today: Date;
+  month: string;
 };
 
-export default function CalendarGrid({ days, today }: CalendarGridProps) {
+export default function CalendarGrid({ days, today, month }: CalendarGridProps) {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const weekdaysHeader = daysOfWeek.map((day) => (
@@ -23,9 +20,11 @@ export default function CalendarGrid({ days, today }: CalendarGridProps) {
       {day}
     </div>
   ));
+ 
+  const [year, monthNum] = month.split('-').map(Number);
+  const numOfDaysInMonth = new Date(year, monthNum, 0).getDate();
+  const firstDayOfMonth = new Date(year, monthNum - 1, 1).getDay();
 
-  const numOfDaysInMonth = getDaysInCurrentMonth();
-  const firstDayOfMonth = getFirstWeekdayOfCurrentMonth();
   const todayDay = today.getDate();
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const isCurrentMonth = currentMonth === days[0]?.date.slice(0, 7);
