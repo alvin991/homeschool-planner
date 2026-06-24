@@ -53,7 +53,7 @@ export default function DayCell({
           {lessons.map((lesson, idx) => (
             <div
               key={idx}
-              className="flex rounded-md border overflow-hidden px-2"
+              className="flex rounded-md border overflow-hidden px-2 text-nowrap"
               style={{
                 opacity: lesson.status === 'completed' ? 0.5 : 1,
                 backgroundColor: lesson.subject_color,
