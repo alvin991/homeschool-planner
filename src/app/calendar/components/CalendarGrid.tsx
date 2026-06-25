@@ -47,6 +47,7 @@ export default function CalendarGrid({ days, today, month }: CalendarGridProps) 
         isValid={isValid}
         lessons={lessons}
         isToday={isToday}
+        column={i % 7}
       />
     );
   });
