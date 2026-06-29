@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { ICourseLessonNode } from '@/models/Course';
+import { ICourse, ICourseLessonNode } from '@/models/Course';
 
 interface ILessonSnapshot {
   _id: Types.ObjectId;
@@ -130,3 +130,42 @@ export function generateScheduledDates(
 
   return result;
 }
+
+type ComputeScheduleInput = {
+  course: ICourse;
+  weekdays: number[];
+  week_interval: 1 | 2;
+  lesson_rate: 0.25 | 0.5 | 1 | 2;
+  start_date: string;
+  end_date?: string;
+  suspension_periods?: Array<{ start: string; end: string }>;
+};
+
+export function computeSchedule(
+  {
+    course,
+    weekdays,
+    week_interval,
+    lesson_rate,
+    start_date,
+    end_date,
+    suspension_periods,
+  }: ComputeScheduleInput
+) {
+  const lessonSnapshots = flattenLessonTree(course.lessonTree);
+  const lessonOccurrences = generateLessonOccurrences(lessonSnapshots, lesson_rate);
+  const scheduledDates = generateScheduledDates(
+    new Date(start_date),
+    weekdays,
+    week_interval,
+    (suspension_periods ?? []).map((p) => ({
+      start: new Date(p.start),
+      end: new Date(p.end),
+    })),
+    lessonOccurrences.length,
+    end_date ? new Date(end_date) : undefined
+  );
+
+  return { lessonSnapshots, lessonOccurrences, scheduledDates };
+}
+

@@ -4,7 +4,10 @@ import {
   flattenLessonTree,
   generateLessonOccurrences,
   generateScheduledDates,
+  computeSchedule,
 } from '../lib/enrollmentUtils';
+import { ISubject } from '@/models/Subject';
+import Student from '@/models/Student';
 
 export const enrollmentResolvers = {
   Query: {
@@ -13,6 +16,78 @@ export const enrollmentResolvers = {
     },
     enrollments: async (_: unknown, { studentId }: { studentId: string }) => {
       return await Enrollment.find({ student: studentId }).lean();
+    },
+    previewEnrollmentSchedule: async (
+      _: unknown,
+      {
+        input,
+      }: {
+        input: {
+          studentId: string;
+          courseId: string;
+          start_date: string;
+          end_date?: string;
+          weekdays?: Array<number>;
+          week_interval?: 1 | 2;
+          lesson_rate?: 0.25 | 0.5 | 1 | 2;
+          status?: 'active' | 'completed' | 'dropped';
+          suspension_periods?: Array<{ start: string; end: string }>;
+        };
+      }
+    ) => {
+
+      if ((input.weekdays ?? []).length === 0)
+        throw new Error('At least one weekday must be selected');
+      const student = await Student.findById(input.studentId).lean();
+      const studentName = student?.name ?? '';
+      const course = await Course.findById(input.courseId)
+        .populate('subject')
+        .lean();
+
+      if (!course) throw new Error('Course not found');
+      const subject = course.subject as unknown as ISubject;
+
+      const { lessonSnapshots, lessonOccurrences, scheduledDates } =
+        computeSchedule({
+          course,
+          weekdays: input.weekdays ?? [],
+          week_interval: input.week_interval ?? 1,
+          lesson_rate: input.lesson_rate ?? 1,
+          start_date: input.start_date,
+          end_date: input.end_date,
+          suspension_periods: input.suspension_periods,
+        });
+      if (scheduledDates.length < lessonOccurrences.length)
+        throw new Error(
+          `Not enough scheduled days — ${scheduledDates.length} days available for ${lessonOccurrences.length} lessons`
+        );
+
+      const days = scheduledDates.map((date, i) => ({
+        date: date.toISOString().slice(0, 10),
+        studentName: studentName, 
+        lessons: lessonOccurrences[i].lessons.map((l) => {
+          const snapshot = lessonSnapshots.find(
+            (s) => s._id.toString() === l.lesson_id.toString()
+          );
+          return {
+            sequence: lessonOccurrences[i].sequence,
+            course_title: course.title,
+            course_abbr: course.abbr,
+            subject_color: subject.color,
+            lesson_title: l.lesson_title,
+            content: snapshot?.content ?? '',
+            note: snapshot?.note ?? '',
+            day_number: l.day_number,
+            total_days: l.total_days,
+            status: lessonOccurrences[i].status,
+          };
+        }),
+      }));
+
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      return { month: currentMonth, days };
     },
   },
   Mutation: {

@@ -20,6 +20,7 @@ import {
   type GetStudentsData,
   type SuspensionPeriod,
 } from './api';
+import PreviewCalendar from './components/PreviewCalendar';
 
 const WEEKDAYS = [
   { label: 'Sun', value: 0 },
@@ -62,6 +63,7 @@ export default function EnrollmentsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const { loading, error, data } = useQuery<GetEnrollmentsData>(
     GET_ENROLLMENTS,
@@ -171,6 +173,47 @@ export default function EnrollmentsPage() {
     setSelectedId(id);
     const row = enrollments.find((e) => e._id === id);
     if (row) loadEnrollmentIntoForm(row);
+  };
+
+  const handlePreview = () => {
+    setFormError(null);
+    if (!form.courseId) {
+      setFormError('Course is required.');
+      return;
+    }
+    if (!form.start_date) {
+      setFormError('Start date is required.');
+      return;
+    }
+    if (form.end_date && form.end_date < form.start_date) {
+      setFormError('End date must be on or after start date.');
+      return;
+    }
+    if (form.lesson_rate <= 0) {
+      setFormError('Lesson rate must be greater than 0.');
+      return;
+    }
+    for (const p of form.suspension_periods) {
+      if (!p.start || !p.end) {
+        setFormError(
+          'All suspension periods must have both a start and end date.'
+        );
+        return;
+      }
+      if (p.start > p.end) {
+        setFormError('Suspension period start must be before end.');
+        return;
+      }
+    }
+    setShowPreview(true);
+  };
+
+  const handleSavePreview = () => {
+    console.log('Saving preview enrollment...');
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
   };
 
   const handleSave = async () => {
@@ -588,6 +631,13 @@ export default function EnrollmentsPage() {
           <div className="flex flex-wrap gap-2 pt-2">
             <button
               type="button"
+              onClick={handlePreview}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              Preview Schedule
+            </button>
+            <button
+              type="button"
               onClick={handleSave}
               disabled={creating || updating}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
@@ -616,6 +666,21 @@ export default function EnrollmentsPage() {
           {!isCreating && selectedId ? (
             <p className="text-xs text-gray-400">ID: {selectedId}</p>
           ) : null}
+
+          {showPreview && (
+            <PreviewCalendar
+              studentId={selectedStudentId}
+              courseId={form.courseId}
+              startDate={form.start_date}
+              endDate={form.end_date}
+              weekdays={form.weekdays}
+              lessonRate={form.lesson_rate}
+              status={form.status}
+              suspensionPeriods={form.suspension_periods}
+              onSave={handleSavePreview}
+              onClose={handleClosePreview}
+            />
+          )}
         </div>
       </div>
     );

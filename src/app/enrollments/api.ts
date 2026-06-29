@@ -1,4 +1,5 @@
 import { gql } from '@apollo/client';
+import { MonthViewData } from '@/app/calendar/types';
 
 export { GET_STUDENTS } from '@/app/resources/api/students.graphql';
 export type { StudentRow, GetStudentsData } from '@/app/resources/api/students.graphql';
@@ -72,6 +73,30 @@ export const DELETE_ENROLLMENT = gql`
   }
 `;
 
+export const PREVIEW_ENROLLMENT_SCHEDULE = gql`
+  query PreviewEnrollmentSchedule($input: EnrollmentCreateInput!) {
+    previewEnrollmentSchedule(input: $input) {
+      month
+      days {
+        date
+        studentName
+        lessons {
+          sequence
+          course_title
+          course_abbr
+          subject_color
+          lesson_title
+          content
+          note
+          day_number
+          total_days
+          status
+        }
+      }
+    }
+  }
+`;
+
 export type CourseSlim = { _id: string; title: string };
 export type GetCoursesSlimData = { courses: CourseSlim[] };
 
@@ -90,3 +115,7 @@ export type EnrollmentRow = {
 };
 
 export type GetEnrollmentsData = { enrollments: EnrollmentRow[] };
+
+export type PreviewEnrollmentScheduleData = {
+  previewEnrollmentSchedule: MonthViewData;
+};
