@@ -208,11 +208,12 @@ export default function EnrollmentsPage() {
     setShowPreview(true);
   };
 
-  const handleSavePreview = () => {
-    console.log('Saving preview enrollment...');
+  const handlePreviewSave = async () => {
+    await handleSave();
+    setShowPreview(false);
   };
 
-  const handleClosePreview = () => {
+  const handlePreviewClose = () => {
     setShowPreview(false);
   };
 
@@ -677,8 +678,8 @@ export default function EnrollmentsPage() {
               lessonRate={form.lesson_rate}
               status={form.status}
               suspensionPeriods={form.suspension_periods}
-              onSave={handleSavePreview}
-              onClose={handleClosePreview}
+              onSave={handlePreviewSave}
+              onClose={handlePreviewClose}
             />
           )}
         </div>
