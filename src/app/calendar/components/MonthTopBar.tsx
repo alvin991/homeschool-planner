@@ -34,7 +34,9 @@ export default function MonthTopBar({ month, onMonthChange, today }: MonthTopBar
         >
           <ChevronLeftIcon className="h-5 w-5" />
         </button>
-        <div className="mx-2 text-lg font-semibold">{formattedSelectedMonth}</div>
+        <div className="mx-2 w-48 text-center text-lg font-semibold">
+          {formattedSelectedMonth}
+        </div>
 
         <button
           onClick={onNext}
