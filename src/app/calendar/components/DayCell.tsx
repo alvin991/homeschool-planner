@@ -163,7 +163,7 @@ export default function DayCell({
         className="mt-6 h-[calc(100%-1.5rem)] overflow-auto pr-1"
         onScroll={() => setPopoverLesson(null)}
       >
-        <div className="space-y-2">
+        <div className="space-y-0">
           {lessons.map((lesson, idx) => (
             <div
               key={idx}
