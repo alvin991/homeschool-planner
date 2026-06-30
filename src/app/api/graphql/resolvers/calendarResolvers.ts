@@ -160,7 +160,7 @@ export const calendarResolvers = {
           const occurrence = enrollment.lesson_occurrences.find(
             (o) => o.sequence === i + 1
           );
-          if (!occurrence || occurrence.status === 'skipped') continue;
+          if (!occurrence) continue;
 
           if (!dayMap.has(schedDate)) dayMap.set(schedDate, []);
           const dayLessons = dayMap.get(schedDate)!;

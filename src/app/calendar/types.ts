@@ -30,6 +30,7 @@ export type MonthViewLesson = {
   subject_color: string;
   lesson_title: string;
   status: LessonOccurrenceStatus;
+  sequence: number;
 };
 
 export type MonthViewDay = {

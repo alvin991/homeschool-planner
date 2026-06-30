@@ -41,6 +41,7 @@ export const GET_MONTH_VIEW = gql`
           subject_color
           lesson_title
           status
+          sequence
         }
       }
     }
