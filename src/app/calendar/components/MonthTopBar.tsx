@@ -21,7 +21,6 @@ export default function MonthTopBar({ month, onMonthChange, today }: MonthTopBar
     onMonthChange(shiftMonth(month, 1));
   };
 
-  const todayLabel = today.toLocaleDateString('default', { month: 'long', day: '2-digit', year: 'numeric' });
   const todayMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
   return (
@@ -50,7 +49,7 @@ export default function MonthTopBar({ month, onMonthChange, today }: MonthTopBar
           className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 active:bg-slate-300"
           onClick={() => onMonthChange(todayMonth)}
         >
-          Today: {todayLabel}
+          Today
         </button>
       </div>
     </div>
