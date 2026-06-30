@@ -126,8 +126,8 @@ export const UPDATE_COURSE = gql`
 `;
 
 export const BULK_CREATE_LESSONS = gql`
-  mutation BulkCreateLessons($courseId: ID!, $prefix: String!, $range: Int!) {
-    bulkCreateLessons(courseId: $courseId, prefix: $prefix, range: $range) {
+  mutation BulkCreateLessons($courseId: ID!, $prefix: String!, $range: Int!, $startFrom: Int) {
+    bulkCreateLessons(courseId: $courseId, prefix: $prefix, range: $range, startFrom: $startFrom) {
       _id
       title
       abbr

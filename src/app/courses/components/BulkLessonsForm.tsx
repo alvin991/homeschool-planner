@@ -20,6 +20,7 @@ const baseInput =
 export default function BulkLessonsForm({ course }: BulkLessonsFormProps) {
   const [prefix, setPrefix] = useState('');
   const [range, setRange] = useState(1);
+  const [startFrom, setStartFrom] = useState<number | ''>('');
   const [prefixError, setPrefixError] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const { setFormMode } = useCoursesUI();
@@ -44,6 +45,7 @@ export default function BulkLessonsForm({ course }: BulkLessonsFormProps) {
           courseId: course._id,
           prefix: prefix.trim(),
           range,
+          startFrom: startFrom === '' ? undefined : startFrom,
         },
       });
       setFormMode('course-edit');
@@ -90,6 +92,20 @@ export default function BulkLessonsForm({ course }: BulkLessonsFormProps) {
             placeholder="e.g. 10"
             value={range}
             onChange={(e) => setRange(parseInt(e.target.value) || 1)}
+          />
+        </div>
+        <div>
+          <label htmlFor="startFrom" className="block text-sm font-medium text-gray-700">
+            Start From <span className="font-normal text-gray-500">(optional)</span>
+          </label>
+          <input
+            type="number"
+            id="startFrom"
+            min={1}
+            className={baseInput}
+            placeholder=""
+            value={startFrom}
+            onChange={(e) => setStartFrom(e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
           />
         </div>
         {submitError ? (

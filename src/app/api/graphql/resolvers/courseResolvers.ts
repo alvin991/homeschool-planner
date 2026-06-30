@@ -149,16 +149,17 @@ export const courseResolvers = {
     },
     bulkCreateLessons: async (
       _: unknown,
-      { courseId, prefix, range }: { courseId: string; prefix: string; range: number },
+      { courseId, prefix, range, startFrom }: { courseId: string; prefix: string; range: number, startFrom?: number },
     ) => {
       const courseDoc = await Course.findById(courseId);
       if (!courseDoc) throw new Error('Course not found');
 
       const existingLessons = countLessonLeaves(courseDoc.lessonTree);
+      const startIndex = startFrom ?? existingLessons + 1;
       const newLessons = Array.from({ length: range }, (_, i) => ({
         _id: new Types.ObjectId(),
         kind: 'lesson' as const,
-        title: `${prefix} ${existingLessons + i + 1}`,
+        title: `${prefix} ${startIndex + i}`,
         order: existingLessons + i + 1,
       }));
 
