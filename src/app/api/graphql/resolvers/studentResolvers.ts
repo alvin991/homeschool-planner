@@ -17,6 +17,7 @@ export const studentResolvers = {
       }: {
         input: {
           name: string;
+          lesson_cutoff_time: string;
         };
       }
     ) => {
@@ -32,6 +33,7 @@ export const studentResolvers = {
         id: string;
         input: {
           name: string;
+          lesson_cutoff_time: string;
         };
       }
     ) => {

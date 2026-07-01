@@ -13,6 +13,7 @@ import {
   type StudentRow,
 } from '../api/students.graphql';
 import apolloClient from '@/utils/apolloClient';
+import { DEFAULT_LESSON_CUTOFF_TIME } from '@/utils/constants';
 
 export default function StudentsPage() {
   const { loading, error, data } = useQuery<GetStudentsData>(GET_STUDENTS, {
@@ -21,6 +22,7 @@ export default function StudentsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
+  const [lessonCutoffTime, setLessonCutoffTime] = useState(DEFAULT_LESSON_CUTOFF_TIME);
   const [formError, setFormError] = useState<string | null>(null);
 
   type CreateStudentMut = { createStudent: StudentRow };
@@ -46,6 +48,7 @@ export default function StudentsPage() {
 
   const resetForm = () => {
     setName('');
+    setLessonCutoffTime(DEFAULT_LESSON_CUTOFF_TIME);
     setFormError(null);
   };
 
@@ -60,6 +63,7 @@ export default function StudentsPage() {
     setSelectedId(id);
     const row = students.find((s) => s._id === id);
     setName(row?.name ?? '');
+    setLessonCutoffTime(row?.lesson_cutoff_time ?? DEFAULT_LESSON_CUTOFF_TIME);
     setFormError(null);
   };
 
@@ -78,9 +82,10 @@ export default function StudentsPage() {
           setIsCreating(false);
           setSelectedId(created._id);
           setName(created.name);
+          setLessonCutoffTime(created.lesson_cutoff_time);
         }
       } else if (selectedId) {
-        await updateStudent({ variables: { id: selectedId, name: trimmed } });
+        await updateStudent({ variables: { id: selectedId, name: trimmed, lesson_cutoff_time: lessonCutoffTime } });
       }
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Save failed.');
@@ -137,6 +142,19 @@ export default function StudentsPage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label htmlFor="cutoff-time" className="mb-1 block text-sm font-medium text-gray-700">
+              Cut off time
+            </label>
+            <input
+              id="cutoff-time"
+              type="text"
+              value={lessonCutoffTime}
+              onChange={(e) => setLessonCutoffTime(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               autoComplete="off"
             />
