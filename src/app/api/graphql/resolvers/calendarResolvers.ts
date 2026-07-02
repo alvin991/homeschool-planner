@@ -2,6 +2,8 @@ import Enrollment from '@/models/Enrollment';
 import { ICourse } from '@/models/Course';
 import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
+import { generateScheduledDates } from '../lib/enrollmentUtils';
+import { DEFAULT_LESSON_CUTOFF_TIME } from '@/utils/constants';
 
 type IPopulatedCourse = Omit<ICourse, 'subject'> & { subject: ISubject };
 
@@ -13,6 +15,9 @@ export const calendarResolvers = {
     ) => {
       const student = await Student.findById(studentId).lean();
       const studentName = student?.name ?? '';
+
+      // ← add here, before the enrollment fetch
+      await processOverdueLessons(studentId, student?.lesson_cutoff_time ?? DEFAULT_LESSON_CUTOFF_TIME);
 
       const enrollments = await Enrollment.find({
         student: studentId,
@@ -115,6 +120,9 @@ export const calendarResolvers = {
       const student = await Student.findById(studentId).lean();
       const studentName = student?.name ?? '';
 
+      // ← call here, BEFORE the view's enrollment fetch
+      await processOverdueLessons(studentId, student?.lesson_cutoff_time ?? DEFAULT_LESSON_CUTOFF_TIME);
+
       // 3. Query enrollments that overlap this month (same filter as calendarDayView, but date range)
       const enrollments = await Enrollment.find({
         student: studentId,
@@ -202,3 +210,77 @@ export const calendarResolvers = {
     },
   },
 };
+
+async function processOverdueLessons(
+  studentId: string,
+  cutoffTime: string // e.g. "20:00"
+): Promise<void> {
+  // 1. Parse cutoff into today's datetime
+  const [hours, minutes] = cutoffTime.split(':').map(Number);
+  const now = new Date();
+  const todayCutoffTime = new Date(now);
+  todayCutoffTime.setHours(hours, minutes, 0, 0);
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  // 2. Fetch active enrollments for student
+  const enrollments = await Enrollment.find({
+    student: studentId,
+    status: { $in: ['active'] },
+  })
+    .populate('course')
+    .lean();
+
+  // 3. For each enrollment:
+  for (const enrollment of enrollments) {
+    const firstOverdueIndex = enrollment.scheduled_dates.findIndex((date, i) => {
+      const schedDate = new Date(date);
+      const isOverdue =
+        schedDate < startOfToday || // past day → always reschedule
+        (schedDate.toDateString() === now.toDateString() &&
+          now > todayCutoffTime); // today → only after cutoff
+
+      const occurrence = enrollment.lesson_occurrences.find(
+        (o) => o.sequence === i + 1
+      ); 
+
+      return occurrence?.status === 'pending' && isOverdue;
+    });
+
+    //    b. If none → continue
+    if (firstOverdueIndex === -1) continue; // no overdue lessons, skip this enrollment
+
+    //    c. splice + regenerate + save
+    const lessonsNeedReschedule =
+      enrollment.scheduled_dates.splice(firstOverdueIndex);
+
+    // generate same count of new dates following the enrollment's pattern
+    const newDates = generateScheduledDates(
+      startOfToday,
+      enrollment.weekdays,
+      enrollment.week_interval ?? 1,
+      (enrollment.suspension_periods ?? []).map((p) => ({
+        start: new Date(p.start),
+        end: new Date(p.end),
+      })),
+      lessonsNeedReschedule.length,
+      enrollment.end_date ? new Date(enrollment.end_date) : undefined
+    );
+
+    // append new dates and save
+    const updatedDates = [...enrollment.scheduled_dates, ...newDates];
+    const course = enrollment.course as unknown as ICourse;
+    console.log(
+      `[reschedule] enrollment ${enrollment._id} ${course.title}: ${lessonsNeedReschedule.length} lessons rescheduled`
+    );
+    console.log(
+      `[reschedule] new scheduled_dates:`,
+      updatedDates.map((d) => new Date(d).toISOString().slice(0, 10))
+    );
+
+    await Enrollment.findByIdAndUpdate(enrollment._id, {
+      scheduled_dates: updatedDates,
+    });
+  }
+}
