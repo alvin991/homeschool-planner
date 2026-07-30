@@ -17,7 +17,7 @@ export const calendarResolvers = {
       const studentName = student?.name ?? '';
 
       // ← add here, before the enrollment fetch
-      await processOverdueLessons(studentId, student?.lesson_cutoff_time ?? DEFAULT_LESSON_CUTOFF_TIME);
+      await processOverdueLessons(studentId, student?.lesson_cutoff_time);
 
       const enrollments = await Enrollment.find({
         student: studentId,
@@ -121,7 +121,7 @@ export const calendarResolvers = {
       const studentName = student?.name ?? '';
 
       // ← call here, BEFORE the view's enrollment fetch
-      await processOverdueLessons(studentId, student?.lesson_cutoff_time ?? DEFAULT_LESSON_CUTOFF_TIME);
+      await processOverdueLessons(studentId, student?.lesson_cutoff_time);
 
       // 3. Query enrollments that overlap this month (same filter as calendarDayView, but date range)
       const enrollments = await Enrollment.find({
@@ -211,10 +211,18 @@ export const calendarResolvers = {
   },
 };
 
+// INVARIANT: a `completed` occurrence's scheduled_dates entry is a historical
+// fact, not a plan — it must never be overwritten by a recompute here (or in
+// updateEnrollment). This function's tail-splice-and-regenerate below only
+// scans for the first overdue occurrence, but currently does NOT re-check
+// the status of anything after it before overwriting — so a later occurrence
+// completed out of sequence order would have its date silently rewritten.
+// Known gap, not yet fixed; keep it in mind before touching this logic.
 async function processOverdueLessons(
   studentId: string,
-  cutoffTime: string // e.g. "20:00"
+  cutoffTime: string = DEFAULT_LESSON_CUTOFF_TIME // e.g. "20:00"
 ): Promise<void> {
+
   // 1. Parse cutoff into today's datetime
   const [hours, minutes] = cutoffTime.split(':').map(Number);
   const now = new Date();
@@ -256,8 +264,9 @@ async function processOverdueLessons(
       enrollment.scheduled_dates.splice(firstOverdueIndex);
 
     // generate same count of new dates following the enrollment's pattern
+    const startDate = firstOverdueIndex !== -1 ? new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000) : startOfToday;
     const newDates = generateScheduledDates(
-      startOfToday,
+      startDate,
       enrollment.weekdays,
       enrollment.week_interval ?? 1,
       (enrollment.suspension_periods ?? []).map((p) => ({
