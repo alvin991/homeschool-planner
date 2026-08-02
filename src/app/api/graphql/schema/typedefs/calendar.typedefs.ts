@@ -1,5 +1,6 @@
 export const calendarTypeDefs = `#graphql
     type DayViewLesson {
+        lesson_id: ID!
         enrollment_id: ID!
         sequence: Int!
         course_title: String!

@@ -32,8 +32,6 @@ export const enrollmentTypeDefs = `#graphql
   type LessonOccurrence {
     sequence: Int!
     lessons: [LessonOccurrenceLesson!]!
-    status: LessonOccurrenceStatus!
-    completed_date: String
   }
 
   type LessonOccurrenceLesson {
@@ -41,6 +39,8 @@ export const enrollmentTypeDefs = `#graphql
     lesson_title: String!
     day_number: Int
     total_days: Int
+    status: LessonOccurrenceStatus!
+    completed_date: String
   }
 
   enum LessonOccurrenceStatus {

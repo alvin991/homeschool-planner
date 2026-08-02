@@ -1,25 +1,25 @@
 import { Schema, model, Document, Types, Model } from 'mongoose';
 import mongoose from 'mongoose';
 
-interface ILessonSnapshot {
+export interface ILessonSnapshot {
   _id: Types.ObjectId;
   title: string;
   content: string;
   note: string;
 }
 
-interface ILessonOccurrenceLesson {
+export interface ILessonOccurrenceLesson {
   lesson_id: Types.ObjectId;  // ref into lesson_snapshot
   lesson_title: string;       // denormalized for display
   day_number?: number;        // only when lesson_rate < 1
   total_days?: number;        // only when lesson_rate < 1
-}
-
-interface ILessonOccurrence {
-  sequence: number;                    // 1-based, matches index in scheduled_dates
-  lessons: ILessonOccurrenceLesson[];  // one or more lessons for that day
   status: 'pending' | 'completed' | 'skipped';
   completed_date?: Date;
+}
+
+export interface ILessonOccurrence {
+  sequence: number;                    // 1-based, matches index in scheduled_dates
+  lessons: ILessonOccurrenceLesson[];  // one or more lessons for that day
 }
 
 export interface IEnrollment<TCourse = Types.ObjectId> extends Document {
@@ -55,6 +55,8 @@ const LessonOccurrenceLessonSchema = new Schema(
     lesson_title: { type: String, required: true },
     day_number: { type: Number },
     total_days: { type: Number },
+    status: { type: String, enum: ['pending', 'completed', 'skipped'], default: 'pending' },
+    completed_date: { type: Date },
   },
   { _id: false }
 );
@@ -63,8 +65,6 @@ const LessonOccurrenceSchema = new Schema(
   {
     sequence: { type: Number, required: true },
     lessons: { type: [LessonOccurrenceLessonSchema], default: [] },
-    status: { type: String, enum: ['pending', 'completed', 'skipped'], default: 'pending' },
-    completed_date: { type: Date },
   },
   { _id: false }
 );
