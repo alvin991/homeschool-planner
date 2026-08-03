@@ -70,7 +70,7 @@ export default function DayView({ studentId, date = localToday() }: DayViewProps
       variables: {
         input: {
           enrollmentId: lesson.enrollment_id,
-          sequence: lesson.sequence,
+          lessonId: lesson.lesson_id,
           status: newStatus,
           completedDate: newStatus === 'completed' ? date : undefined,
         },
@@ -109,7 +109,7 @@ export default function DayView({ studentId, date = localToday() }: DayViewProps
         <div className="w-1/3 py-4">
           {lessons.map((lesson) => (
             <div
-              key={`${lesson.enrollment_id}-${lesson.sequence}`}
+              key={`${lesson.lesson_id}`}
               className="w-full mb-3"
             >
               <div className="rounded-xl overflow-hidden flex flex-col h-36 relative">

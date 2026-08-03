@@ -135,7 +135,7 @@ export default function DayCell({
                       variables: {
                         input: {
                           enrollmentId: popoverLesson.enrollment_id,
-                          sequence: popoverLesson.sequence,
+                          lessonId: popoverLesson.lesson_id,
                           status: action.value,
                           completedDate:
                             action.value === 'completed'

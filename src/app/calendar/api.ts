@@ -7,6 +7,7 @@ export const GET_DAY_VIEW = gql`
       studentName
       lessons {
         enrollment_id
+        lesson_id
         sequence
         course_title
         subject_color
@@ -36,6 +37,7 @@ export const GET_MONTH_VIEW = gql`
         studentName
         lessons {
           enrollment_id
+          lesson_id
           course_title
           course_abbr
           subject_color
