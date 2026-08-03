@@ -35,7 +35,6 @@ export const enrollmentResolvers = {
         };
       }
     ) => {
-
       if ((input.weekdays ?? []).length === 0)
         throw new Error('At least one weekday must be selected');
       const student = await Student.findById(input.studentId).lean();
@@ -64,12 +63,13 @@ export const enrollmentResolvers = {
 
       const days = scheduledDates.map((date, i) => ({
         date: date.toISOString().slice(0, 10),
-        studentName: studentName, 
+        studentName: studentName,
         lessons: lessonOccurrences[i].lessons.map((l) => {
           const snapshot = lessonSnapshots.find(
             (s) => s._id.toString() === l.lesson_id.toString()
           );
           return {
+            lesson_id: l.lesson_id,
             sequence: lessonOccurrences[i].sequence,
             course_title: course.title,
             course_abbr: course.abbr,
@@ -79,7 +79,7 @@ export const enrollmentResolvers = {
             note: snapshot?.note ?? '',
             day_number: l.day_number,
             total_days: l.total_days,
-            status: lessonOccurrences[i].status,
+            status: l.status,
           };
         }),
       }));
@@ -98,24 +98,24 @@ export const enrollmentResolvers = {
       }: {
         input: {
           enrollmentId: string;
-          sequence: number;
+          lessonId: string;
           status: string;
           completedDate?: string;
         };
       }
     ) => {
-      const { enrollmentId, sequence, status, completedDate } = input;
+      const { enrollmentId, lessonId, status, completedDate } = input;
 
       const enrollment = await Enrollment.findById(enrollmentId);
       if (!enrollment) throw new Error('Enrollment not found');
 
-      const occurrence = enrollment.lesson_occurrences.find(
-        (o) => o.sequence === sequence
-      );
-      if (!occurrence) throw new Error('Occurrence not found');
+      const lesson = enrollment.lesson_occurrences
+        .flatMap((o) => o.lessons)
+        .find((l) => l.lesson_id.toString() === lessonId);
+      if (!lesson) throw new Error('Lesson not found');
 
-      occurrence.status = status as 'pending' | 'completed' | 'skipped';
-      occurrence.completed_date =
+      lesson.status = status as 'pending' | 'completed' | 'skipped';
+      lesson.completed_date =
         status === 'completed'
           ? completedDate
             ? new Date(completedDate)
@@ -256,29 +256,31 @@ export const enrollmentResolvers = {
 
       // 5. Regenerate lesson_occurrences if lesson_rate changed
       if (lessonRateChanged) {
-        const completedOccurrences = existing.lesson_occurrences.filter(
-          (o) => o.status === 'completed'
-        );
-        const completedLessonIds = new Set(
-          completedOccurrences.flatMap((o) =>
-            o.lessons.map((l) => l.lesson_id.toString())
-          )
-        );
+        const completedLessons = existing.lesson_occurrences
+          .flatMap((o) => o.lessons)
+          .filter((l) => l.status === 'completed');
+        const completedLessonIds = new Set(completedLessons.map((l) => l.lesson_id.toString()));
+
         const pendingLessons = existing.lesson_snapshot.filter(
           (l) => !completedLessonIds.has(l._id.toString())
         );
+
+        const preservedOccurrences = completedLessons.map((l, i) => ({
+          sequence: i + 1,
+          lessons: [l]
+        }));
 
         const newPendingOccurrences = generateLessonOccurrences(
           pendingLessons,
           input.lesson_rate!
         );
-        const startSequence = completedOccurrences.length + 1;
+        const startSequence = preservedOccurrences.length + 1;
         newPendingOccurrences.forEach((o, i) => {
           o.sequence = startSequence + i;
         });
 
         updates.lesson_occurrences = [
-          ...completedOccurrences,
+          ...preservedOccurrences,
           ...newPendingOccurrences,
         ];
       }
