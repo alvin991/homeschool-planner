@@ -7,6 +7,9 @@
  *
  * Add --dry-run to log what would change without writing anything:
  *   npx tsx scripts/migrate-lesson-status.ts --dry-run
+ *
+ * Add --id=<enrollmentId> to migrate a single enrollment only:
+ *   npx tsx scripts/migrate-lesson-status.ts --id=6a36b55f4c21b176e632822d
  */
 import 'dotenv/config';
 import mongoose from 'mongoose';
@@ -36,6 +39,7 @@ interface LegacyEnrollment {
 
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
+  const idArg = process.argv.find((a) => a.startsWith('--id='))?.slice('--id='.length);
 
   const uri = process.env.MONGODB_URI;
   if (!uri) {
@@ -50,6 +54,7 @@ async function main() {
 
   const enrollments = (await Enrollment.find({
     'lesson_occurrences.lessons.status': { $exists: false },
+    ...(idArg ? { _id: new mongoose.Types.ObjectId(idArg) } : {}),
   }).lean()) as unknown as LegacyEnrollment[];
 
   let migrated = 0;
