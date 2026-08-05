@@ -17,7 +17,7 @@ export const calendarResolvers = {
       const studentName = student?.name ?? '';
 
       // ← add here, before the enrollment fetch
-      await processOverdueLessons(studentId, student?.lesson_cutoff_time ?? DEFAULT_LESSON_CUTOFF_TIME);
+      await processOverdueLessons(studentId, student?.lesson_cutoff_time);
 
       const enrollments = await Enrollment.find({
         student: studentId,
@@ -34,6 +34,7 @@ export const calendarResolvers = {
 
       const dayLessons: {
         enrollment_id: unknown;
+        lesson_id: unknown;
         sequence: number;
         course_title: string;
         course_abbr: string;
@@ -50,51 +51,54 @@ export const calendarResolvers = {
         const isScheduledDay = enrollment.scheduled_dates.some(
           (d) => new Date(d).toISOString().slice(0, 10) === date
         );
-        if (!isScheduledDay) continue;
 
-        const firstPending = enrollment.lesson_occurrences.find(
-          (o) =>
-            o.status === 'pending' &&
-            enrollment.scheduled_dates[o.sequence - 1] !== undefined &&
-            new Date(enrollment.scheduled_dates[o.sequence - 1])
-              .toISOString()
-              .slice(0, 10) === date
-        );
-        const completedToday = enrollment.lesson_occurrences.filter(
-          (o) =>
-            o.status === 'completed' &&
-            o.completed_date &&
-            new Date(o.completed_date).toISOString().slice(0, 10) === date
-        );
+        // the occurrence whose scheduled date is today — its still-pending lessons are "due today"
+        const todaysOccurrence = isScheduledDay
+          ? enrollment.lesson_occurrences.find(
+              (o, idx) =>
+                new Date(enrollment.scheduled_dates[idx])
+                  .toISOString()
+                  .slice(0, 10) === date
+            )
+          : undefined;
+        const pendingToday = (todaysOccurrence?.lessons ?? [])
+          .filter((l) => l.status === 'pending')
+          .map((l) => ({ lesson: l, sequence: todaysOccurrence!.sequence }));
 
-        const occurrences = [
-          ...(firstPending ? [firstPending] : []),
-          ...completedToday,
-        ];
+        // any lesson completed today, regardless of which day it was originally scheduled for
+        const completedToday = enrollment.lesson_occurrences
+          .flatMap((o) =>
+            o.lessons.map((l) => ({ lesson: l, sequence: o.sequence }))
+          )
+          .filter(
+            ({ lesson: l }) =>
+              l.status === 'completed' &&
+              l.completed_date &&
+              new Date(l.completed_date).toISOString().slice(0, 10) === date
+          );
 
-        if (occurrences.length === 0) continue;
+        const toShow = [...pendingToday, ...completedToday];
+        if (toShow.length === 0) continue;
 
         const course = enrollment.course as unknown as IPopulatedCourse;
-
-        for (const occurrence of occurrences) {
-          for (const l of occurrence.lessons) {
-            const snapshot = enrollment.lesson_snapshot.find(
-              (s) => s._id.toString() === l.lesson_id.toString()
-            );
-            dayLessons.push({
-              enrollment_id: enrollment._id,
-              sequence: occurrence.sequence,
-              course_title: course.title,
-              course_abbr: course.abbr,
-              subject_color: course.subject.color,
-              lesson_title: l.lesson_title,
-              content: snapshot?.content ?? '',
-              note: snapshot?.note ?? '',
-              day_number: l.day_number,
-              total_days: l.total_days,
-              status: occurrence.status,
-            });
-          }
+        for (const { lesson: l, sequence } of toShow) {
+          const snapshot = enrollment.lesson_snapshot.find(
+            (s) => s._id.toString() === l.lesson_id.toString()
+          );
+          dayLessons.push({
+            enrollment_id: enrollment._id,
+            lesson_id: l.lesson_id,
+            sequence,
+            course_title: course.title,
+            course_abbr: course.abbr,
+            subject_color: course.subject.color,
+            lesson_title: l.lesson_title,
+            content: snapshot?.content ?? '',
+            note: snapshot?.note ?? '',
+            day_number: l.day_number,
+            total_days: l.total_days,
+            status: l.status,
+          });
         }
       }
 
@@ -121,7 +125,7 @@ export const calendarResolvers = {
       const studentName = student?.name ?? '';
 
       // ← call here, BEFORE the view's enrollment fetch
-      await processOverdueLessons(studentId, student?.lesson_cutoff_time ?? DEFAULT_LESSON_CUTOFF_TIME);
+      await processOverdueLessons(studentId, student?.lesson_cutoff_time);
 
       // 3. Query enrollments that overlap this month (same filter as calendarDayView, but date range)
       const enrollments = await Enrollment.find({
@@ -142,6 +146,7 @@ export const calendarResolvers = {
         string,
         {
           enrollment_id: unknown;
+          lesson_id: unknown;
           sequence: number;
           course_title: string;
           course_abbr: string;
@@ -158,27 +163,35 @@ export const calendarResolvers = {
       for (const enrollment of enrollments) {
         const course = enrollment.course as unknown as IPopulatedCourse;
 
-        // Iterate scheduled_dates (0-indexed); sequence is 1-based
         for (let i = 0; i < enrollment.scheduled_dates.length; i++) {
-          const schedDate = new Date(enrollment.scheduled_dates[i])
-            .toISOString()
-            .slice(0, 10);
-          if (schedDate < startDate || schedDate > endDate) continue;
-
           const occurrence = enrollment.lesson_occurrences.find(
             (o) => o.sequence === i + 1
           );
           if (!occurrence) continue;
 
-          if (!dayMap.has(schedDate)) dayMap.set(schedDate, []);
-          const dayLessons = dayMap.get(schedDate)!;
+          const schedDate = new Date(enrollment.scheduled_dates[i])
+            .toISOString()
+            .slice(0, 10);
 
           for (const l of occurrence.lessons) {
+            // completed lessons show on the day they were actually finished,
+            // not the occurrence's (possibly since-rescheduled) planned date
+            const placementDate =
+              l.status === 'completed' && l.completed_date
+                ? new Date(l.completed_date).toISOString().slice(0, 10)
+                : schedDate;
+
+            if (placementDate < startDate || placementDate > endDate) continue;
+
+            if (!dayMap.has(placementDate)) dayMap.set(placementDate, []);
+            const dayLessons = dayMap.get(placementDate)!;
+
             const snapshot = enrollment.lesson_snapshot.find(
               (s) => s._id.toString() === l.lesson_id.toString()
             );
             dayLessons.push({
               enrollment_id: enrollment._id,
+              lesson_id: l.lesson_id,
               sequence: occurrence.sequence,
               course_title: course.title,
               course_abbr: course.abbr,
@@ -188,7 +201,7 @@ export const calendarResolvers = {
               note: snapshot?.note ?? '',
               day_number: l.day_number,
               total_days: l.total_days,
-              status: occurrence.status,
+              status: l.status,
             });
           }
         }
@@ -211,9 +224,16 @@ export const calendarResolvers = {
   },
 };
 
+// INVARIANT: a `completed` occurrence's scheduled_dates entry is a historical
+// fact, not a plan — it must never be overwritten by a recompute here (or in
+// updateEnrollment). This function's tail-splice-and-regenerate below only
+// scans for the first overdue occurrence, but currently does NOT re-check
+// the status of anything after it before overwriting — so a later occurrence
+// completed out of sequence order would have its date silently rewritten.
+// Known gap, not yet fixed; keep it in mind before touching this logic.
 async function processOverdueLessons(
   studentId: string,
-  cutoffTime: string // e.g. "20:00"
+  cutoffTime: string = DEFAULT_LESSON_CUTOFF_TIME // e.g. "20:00"
 ): Promise<void> {
   // 1. Parse cutoff into today's datetime
   const [hours, minutes] = cutoffTime.split(':').map(Number);
@@ -234,19 +254,23 @@ async function processOverdueLessons(
 
   // 3. For each enrollment:
   for (const enrollment of enrollments) {
-    const firstOverdueIndex = enrollment.scheduled_dates.findIndex((date, i) => {
-      const schedDate = new Date(date);
-      const isOverdue =
-        schedDate < startOfToday || // past day → always reschedule
-        (schedDate.toDateString() === now.toDateString() &&
-          now > todayCutoffTime); // today → only after cutoff
+    const firstOverdueIndex = enrollment.scheduled_dates.findIndex(
+      (date, i) => {
+        const schedDate = new Date(date);
+        const isOverdue =
+          schedDate < startOfToday || // past day → always reschedule
+          (schedDate.toDateString() === now.toDateString() &&
+            now > todayCutoffTime); // today → only after cutoff
 
-      const occurrence = enrollment.lesson_occurrences.find(
-        (o) => o.sequence === i + 1
-      ); 
+        const occurrence = enrollment.lesson_occurrences.find(
+          (o) => o.sequence === i + 1
+        );
 
-      return occurrence?.status === 'pending' && isOverdue;
-    });
+        return (
+          occurrence?.lessons.some((l) => l.status === 'pending') && isOverdue
+        );
+      }
+    );
 
     //    b. If none → continue
     if (firstOverdueIndex === -1) continue; // no overdue lessons, skip this enrollment
@@ -256,8 +280,12 @@ async function processOverdueLessons(
       enrollment.scheduled_dates.splice(firstOverdueIndex);
 
     // generate same count of new dates following the enrollment's pattern
+    const startDate =
+      firstOverdueIndex !== -1
+        ? new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000)
+        : startOfToday;
     const newDates = generateScheduledDates(
-      startOfToday,
+      startDate,
       enrollment.weekdays,
       enrollment.week_interval ?? 1,
       (enrollment.suspension_periods ?? []).map((p) => ({

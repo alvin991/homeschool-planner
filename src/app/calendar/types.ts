@@ -2,6 +2,7 @@ export type LessonOccurrenceStatus = 'pending' | 'completed' | 'skipped';
 
 export type DayViewLesson = {
   enrollment_id: string;
+  lesson_id: string;
   sequence: number;
   course_title: string;
   subject_color: string;
@@ -25,6 +26,7 @@ export type GetCalendarDayViewData = {
 
 export type MonthViewLesson = {
   enrollment_id: string;
+  lesson_id: string;
   course_title: string;
   course_abbr: string;
   subject_color: string;

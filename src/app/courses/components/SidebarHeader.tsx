@@ -19,6 +19,11 @@ export default function SidebarHeader({ onClickAddLesson, onClickAddFolder, onCl
         </button>
         <button
             className="btn btn-ghost flex-1 border border-gray-300 bg-white active:scale-[0.98]"
+            onClick={onClickAddFolder}>
+          + Folder
+        </button>
+        <button
+            className="btn btn-ghost flex-1 border border-gray-300 bg-white active:scale-[0.98]"
             onClick={onClickAddBulkLessons}>
           + Bulk Lessons
         </button>

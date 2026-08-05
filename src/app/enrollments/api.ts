@@ -85,6 +85,7 @@ export const PREVIEW_ENROLLMENT_SCHEDULE = gql`
           course_title
           course_abbr
           subject_color
+          lesson_id
           lesson_title
           content
           note

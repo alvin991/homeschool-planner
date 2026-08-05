@@ -55,7 +55,7 @@ export const sharedInputsTypeDefs = `#graphql
 
   input UpdateOccurrenceStatusInput {
     enrollmentId: ID!
-    sequence: Int!
+    lessonId: ID!
     status: LessonOccurrenceStatus!
     completedDate: String
   }

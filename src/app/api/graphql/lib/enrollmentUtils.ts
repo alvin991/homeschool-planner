@@ -1,12 +1,5 @@
-import { Types } from 'mongoose';
 import { ICourse, ICourseLessonNode } from '@/models/Course';
-
-interface ILessonSnapshot {
-  _id: Types.ObjectId;
-  title: string;
-  content: string;
-  note: string;
-}
+import { ILessonSnapshot, ILessonOccurrence } from '@/models/Enrollment';
 
 export function flattenLessonTree(
   nodes: ICourseLessonNode[]
@@ -27,20 +20,6 @@ export function flattenLessonTree(
   return result;
 }
 
-interface ILessonOccurrenceLesson {
-  lesson_id: Types.ObjectId;
-  lesson_title: string;
-  day_number?: number;
-  total_days?: number;
-}
-
-interface ILessonOccurrence {
-  sequence: number;
-  lessons: ILessonOccurrenceLesson[];
-  status: 'pending' | 'completed' | 'skipped';
-  completed_date?: Date;
-}
-
 export function generateLessonOccurrences(
   lessonSnapshot: ILessonSnapshot[],
   lessonRate: 0.25 | 0.5 | 1 | 2
@@ -58,8 +37,9 @@ export function generateLessonOccurrences(
         lessons: chunk.map((l) => ({
           lesson_id: l._id,
           lesson_title: l.title,
+          status: 'pending',
+          completed_date: undefined,
         })),
-        status: 'pending',
       });
     }
   } else {
@@ -75,9 +55,10 @@ export function generateLessonOccurrences(
               lesson_title: lesson.title,
               day_number: day,
               total_days: totalDays,
+              status: 'pending',
+              completed_date: undefined,
             },
-          ],
-          status: 'pending',
+          ]
         });
       }
     }
