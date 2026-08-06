@@ -21,6 +21,7 @@
     "@heroicons/react": "^2.2.0",
     "graphql": "^16.13.0",
     "graphql-scalars": "^1.25.0",
+    "luxon": "^3.7.2",
     "mongodb": "^7.1.0",
     "mongoose": "^9.2.3",
     "next": "16.1.6",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/luxon": "^3.7.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
