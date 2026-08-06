@@ -5,6 +5,7 @@ export const GET_STUDENTS = gql`
     students {
       _id
       name
+      lesson_cutoff_time
     }
   }
 `;
@@ -14,6 +15,7 @@ export const CREATE_STUDENT = gql`
     createStudent(input: { name: $name }) {
       _id
       name
+      lesson_cutoff_time
     }
   }
 `;
