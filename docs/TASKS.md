@@ -143,11 +143,20 @@ ones.
     Reason not yet specified — ask the stakeholder (wife) when picked up.
     Likely lives in the students management page under `/resources`.
 
-17. **Proper env var management for dev/prod.** Env vars (e.g.
-    `NEXT_PUBLIC_DEFAULT_STUDENT_ID`) are currently added manually to the
-    production container. When building out the deploy pipeline further,
-    consider GitHub Actions secrets injected at build time (required for
-    `NEXT_PUBLIC_` vars) or a secrets manager for runtime vars.
+17. **Proper env var management for dev/prod.** `calendar/page.tsx` currently
+    hardcodes two student IDs (`DEV_STUDENT_ID`, `PROD_STUDENT_ID`) and
+    switches between them via `NODE_ENV`. Converting this to a real env var
+    (e.g. `NEXT_PUBLIC_DEFAULT_STUDENT_ID`) is more involved than it looks:
+    `NEXT_PUBLIC_` vars get baked into the JS bundle at **build time**, but
+    `docker-compose.prod.yaml`'s `env_file:` only reaches the *running
+    container*, not the Docker build step. Doing it properly needs: `ARG`/
+    `ENV` in the `Dockerfile`'s builder stage, a `build: args:` block in
+    `docker-compose.prod.yaml`, and `.github/workflows/deploy.yml` loading
+    `production.env` into the runner's shell environment before
+    `docker compose ... --build` runs (compose's `${VAR}` substitution reads
+    the invoking shell env, not `env_file:`) — plus the code change itself.
+    Four files, not one; budget a focused session rather than folding it into
+    an unrelated fix.
 
 18. **Automate semver tagging in CI/CD.** Currently tagged manually after
     deploy, which is easy to forget. Commit messages already follow
