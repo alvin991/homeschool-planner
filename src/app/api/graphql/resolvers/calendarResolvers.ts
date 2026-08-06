@@ -1,9 +1,10 @@
+import { DateTime } from 'luxon';
 import Enrollment from '@/models/Enrollment';
 import { ICourse } from '@/models/Course';
 import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
 import { generateScheduledDates } from '../lib/enrollmentUtils';
-import { DEFAULT_LESSON_CUTOFF_TIME } from '@/utils/constants';
+import { DEFAULT_LESSON_CUTOFF_TIME, FAMILY_TIMEZONE } from '@/utils/constants';
 
 type IPopulatedCourse = Omit<ICourse, 'subject'> & { subject: ISubject };
 
@@ -237,12 +238,15 @@ async function processOverdueLessons(
 ): Promise<void> {
   // 1. Parse cutoff into today's datetime
   const [hours, minutes] = cutoffTime.split(':').map(Number);
-  const now = new Date();
-  const todayCutoffTime = new Date(now);
-  todayCutoffTime.setHours(hours, minutes, 0, 0);
-
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  const nowFamilyTz = DateTime.now().setZone(FAMILY_TIMEZONE);
+  const todayISO = nowFamilyTz.toISODate()!; // e.g. "2026-06-15"
+  const cutoffFamilyTz = nowFamilyTz.set({
+    hour: hours,
+    minute: minutes,
+    second: 0,
+    millisecond: 0,
+  });
+  const pastCutoff = nowFamilyTz > cutoffFamilyTz;
 
   // 2. Fetch active enrollments for student
   const enrollments = await Enrollment.find({
@@ -256,16 +260,14 @@ async function processOverdueLessons(
   for (const enrollment of enrollments) {
     const firstOverdueIndex = enrollment.scheduled_dates.findIndex(
       (date, i) => {
-        const schedDate = new Date(date);
+        const schedDateISO = new Date(date).toISOString().slice(0, 10);
         const isOverdue =
-          schedDate < startOfToday || // past day → always reschedule
-          (schedDate.toDateString() === now.toDateString() &&
-            now > todayCutoffTime); // today → only after cutoff
+          schedDateISO < todayISO || // past day → always reschedule
+          (schedDateISO === todayISO && pastCutoff); // today → only after cutoff
 
         const occurrence = enrollment.lesson_occurrences.find(
           (o) => o.sequence === i + 1
         );
-
         return (
           occurrence?.lessons.some((l) => l.status === 'pending') && isOverdue
         );
@@ -280,10 +282,8 @@ async function processOverdueLessons(
       enrollment.scheduled_dates.splice(firstOverdueIndex);
 
     // generate same count of new dates following the enrollment's pattern
-    const startDate =
-      firstOverdueIndex !== -1
-        ? new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000)
-        : startOfToday;
+    const startDate = new Date(nowFamilyTz.plus({ days: 1 }).toISODate()!);
+
     const newDates = generateScheduledDates(
       startDate,
       enrollment.weekdays,
