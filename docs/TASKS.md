@@ -3,7 +3,7 @@
 Living backlog for the homeschool-planner app. Written to be readable by any AI
 assistant or human picking up the project cold — no prior conversation needed.
 
-Last updated: 2026-08-07
+Last updated: 2026-08-09
 
 ## Context
 
@@ -70,6 +70,22 @@ incorrectly, that `DayCell.tsx` "already did this right.")
   5. `MonthView.tsx:40` / `calendar/page.tsx:18` — swap their browser-local
      `new Date()` today/month defaults for `familyTodayAsDate()` /
      `familyToday().slice(0,7)` respectively.
+  6. `PreviewCalendar.tsx:57` — same bug as `MonthView.tsx:40` (`const today
+     = new Date()`), found via a full `new Date(` audit of the codebase; it
+     feeds the same `CalendarGrid`/`MonthTopBar` components. Swap for
+     `familyTodayAsDate()`.
+  7. `enrollmentResolvers.ts:87-88` (`previewEnrollmentSchedule`) — computes
+     a default "current month" via `now.getFullYear()/getMonth()` on a bare
+     server-side `new Date()`, i.e. the server's own deployment timezone
+     (likely UTC) rather than the family's — the same root cause as the
+     very first timezone bug in this app, just a rarer trigger (only wrong
+     right at a month boundary). Replace with `familyToday().slice(0,7)`.
+- Audited every `new Date(` in the codebase (64 call sites) while designing
+  this fix — everything else either parses an already-known date value
+  (not "what is now") or captures an instant for a timestamp field
+  (`completed_date` fallback, `last_synced_at`) or a live clock display
+  (`DayView.tsx`'s ticking `now`), none of which are timezone-sensitive in
+  the way described above.
 - Not yet started. Small, contained, no schema/data changes — safe to ship
   on its own ahead of backlog #1.
 
@@ -343,6 +359,57 @@ incorrectly, that `DayCell.tsx` "already did this right.")
     `feat(...)`/`fix(...)` convention, so options: `semantic-release` for
     fully automated bumps, a `workflow_dispatch` input for manual trigger, or
     PR-label-based bumping.
+
+19. **Calendar-day fields rely on implicit, coincidental UTC round-tripping
+    instead of an explicit convention — not currently broken, but fragile.**
+    Found while implementing item #1 (the two share a root cause). Goal:
+    datetime handling across the app should follow one explicit, consistent
+    convention rather than "happens to work today." Positioned last in this
+    list purely because it's new, not because it's low-priority — it's
+    tightly coupled to item #1 (same fields, same reschedule logic) and
+    worth resolving before that item's roadmap does much more with
+    `scheduled_dates`.
+    - **Finding A:** [`enrollmentResolvers.ts`](src/app/api/graphql/resolvers/enrollmentResolvers.ts)'s
+      `new Date(completedDate)` parses a date-*only* ISO string
+      (`"2026-08-09"`) as **UTC midnight** — a genuine JS spec quirk (date-
+      only strings parse as UTC; date-*time* strings without a zone parse
+      as local — inconsistent by design). This isn't wrong *today* only
+      because every read site also uses `.toISOString().slice(0,10)`
+      (also UTC) — write and read happen to cancel out. But it's a trap:
+      any future code that reads `completed_date` via local getters
+      (`.getDate()`, `.toLocaleDateString()`) instead of `.toISOString()`
+      would silently get the wrong day, with nothing to warn that this
+      field's correctness depends on every caller consistently choosing
+      UTC.
+    - **Finding B:** [`enrollmentUtils.ts`](src/app/api/graphql/lib/enrollmentUtils.ts)'s
+      `generateScheduledDates()` zeroes time via `current.setHours(0, 0, 0,
+      0)` — midnight in the **server's own local timezone**, not explicitly
+      UTC and not explicitly `FAMILY_TIMEZONE`. This currently agrees with
+      Finding A's UTC round-trip only because typical cloud hosts default
+      to UTC. If the server's timezone were ever changed (e.g. someone sets
+      `TZ=America/Edmonton` on the host, plausibly *thinking* that would
+      help), every `scheduled_dates` entry would silently shift by a day
+      when read back via `.toISOString().slice(0,10)` elsewhere. This is a
+      different, more structural assumption than anything fixed in the
+      urgent item above — it's baked into the core schedule-generation
+      math, not just "what day is today."
+    - **Not decided yet — needs its own design pass, not a quick patch.**
+      Two directions worth weighing when this gets picked up: (a) keep
+      `Date`/timestamp storage for these fields but make the UTC round-trip
+      *explicit* (e.g. a helper that always anchors calendar-day fields to
+      UTC midnight on write, matching the always-UTC reads, so it's a
+      documented convention instead of an accident), or (b) store
+      calendar-day fields (`start_date`, `end_date`, `scheduled_dates[]`,
+      `completed_date`) as plain `"YYYY-MM-DD"` strings instead of `Date`
+      — sidesteps the time-of-day ambiguity entirely for values that never
+      had a meaningful time-of-day, and every GraphQL resolver already
+      converts them to strings at the boundary anyway
+      (`Enrollment.start_date`/`.end_date`/`.scheduled_dates` resolvers all
+      format via `.toISOString().slice(0,10)`), so this might just remove a
+      layer of conversion rather than add one. (b) is the more thorough
+      fix but touches the schema and needs a migration; (a) is smaller but
+      only codifies the current accident rather than simplifying it.
+    - Not yet started.
 
 ## Working agreements
 
