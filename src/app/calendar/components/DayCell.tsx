@@ -5,6 +5,7 @@ import { MonthViewLesson } from '../types';
 import { useMutation } from '@apollo/client/react';
 import { UPDATE_OCCURRENCE_STATUS } from '../api';
 import apolloClient from '@/utils/apolloClient';
+import { familyToday } from '@/utils/dateUtils';
 
 export const statusActions: Record<string, { label: string; value: string }[]> = {
   pending: [
@@ -139,7 +140,7 @@ export default function DayCell({
                           status: action.value,
                           completedDate:
                             action.value === 'completed'
-                              ? new Date().toISOString().slice(0, 10)
+                              ? familyToday()
                               : null,
                         },
                       },

@@ -1,14 +1,5 @@
-/** Returns today's date as YYYY-MM-DD in the browser's local timezone. */
-export function localToday(): string {
-  const d = new Date();
-  return (
-    d.getFullYear() +
-    '-' +
-    String(d.getMonth() + 1).padStart(2, '0') +
-    '-' +
-    String(d.getDate()).padStart(2, '0')
-  );
-}
+import { DateTime } from 'luxon';
+import { FAMILY_TIMEZONE } from './constants';
 
 /**
  * shiftMonth("2026-06", -1) → "2026-05"
@@ -19,4 +10,17 @@ export function shiftMonth(month: string, delta: number): string {
   const [year, m] = month.split('-').map(Number);
   const d = new Date(year, m - 1 + delta, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function familyNow(): DateTime {
+  return DateTime.now().setZone(FAMILY_TIMEZONE);
+}
+
+export function familyToday(): string {
+  return familyNow().toISODate()!;
+}
+
+export function familyTodayAsDate(): Date {
+  const { year, month, day } = familyNow();
+  return new Date(year, month - 1, day);
 }

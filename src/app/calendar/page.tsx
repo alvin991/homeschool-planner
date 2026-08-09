@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DayView from './components/DayView';
 import MonthView from './components/MonthView';
+import { familyToday } from '@/utils/dateUtils';
 
 function CalendarContent() {
   const searchParams = useSearchParams();
@@ -15,7 +16,7 @@ function CalendarContent() {
   const studentId = searchParams.get('studentId') 
     ?? (process.env.NODE_ENV === 'production' ? PROD_STUDENT_ID : DEV_STUDENT_ID);
 
-  const month = searchParams.get('month') ?? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const month = searchParams.get('month') ?? familyToday().slice(0, 7); // "YYYY-MM" format
 
   if (view === 'month') return <MonthView studentId={studentId} month={month} />;
 

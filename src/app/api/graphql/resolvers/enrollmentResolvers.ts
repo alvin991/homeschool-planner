@@ -8,6 +8,7 @@ import {
 } from '../lib/enrollmentUtils';
 import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
+import { familyToday } from '@/utils/dateUtils';
 
 export const enrollmentResolvers = {
   Query: {
@@ -84,8 +85,7 @@ export const enrollmentResolvers = {
         }),
       }));
 
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const currentMonth = familyToday().slice(0, 7); // "YYYY-MM" format
 
       return { month: currentMonth, days };
     },
