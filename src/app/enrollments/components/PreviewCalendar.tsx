@@ -8,6 +8,7 @@ import {
 import CalendarGrid from '../../calendar/components/CalendarGrid';
 import MonthTopBar from '../../calendar/components/MonthTopBar';
 import { useState } from 'react';
+import { familyTodayAsDate } from '@/utils/dateUtils';
 
 type PreviewCalendarProps = {
   studentId: string;
@@ -54,7 +55,7 @@ export default function PreviewCalendar({
   );
   const allDays = data?.previewEnrollmentSchedule.days ?? [];
   const [month, setMonth] = useState(startDate.slice(0, 7));
-  const today = new Date();
+  const today = familyTodayAsDate();
   const days = allDays.filter((d) => d.date.startsWith(month));
 
   if (loading) return <div className="fixed inset-0 z-50 ...">Loading...</div>;

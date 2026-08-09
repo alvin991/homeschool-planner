@@ -5,7 +5,7 @@ import apolloClient from '@/utils/apolloClient';
 import type { GetCalendarDayViewData, DayViewLesson } from '../types';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Nunito } from 'next/font/google';
-import { localToday } from '@/utils/dateUtils';
+import { familyToday } from '@/utils/dateUtils';
 
 const nunito = Nunito({
   subsets: ['latin'],
@@ -16,7 +16,7 @@ type DayViewProps = {
   date?: string;
 };
 
-export default function DayView({ studentId, date = localToday() }: DayViewProps) {
+export default function DayView({ studentId, date = familyToday() }: DayViewProps) {
   const [now, setNow] = useState<Date | null>(null);
   // selectedLesson drives the detail popup — not yet implemented
   const [selectedLesson, setSelectedLesson] = useState<DayViewLesson | null>(
@@ -72,7 +72,7 @@ export default function DayView({ studentId, date = localToday() }: DayViewProps
           enrollmentId: lesson.enrollment_id,
           lessonId: lesson.lesson_id,
           status: newStatus,
-          completedDate: newStatus === 'completed' ? date : undefined,
+          completedDate: newStatus === 'completed' ? familyToday() : undefined,
         },
       },
     });

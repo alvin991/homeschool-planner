@@ -1,10 +1,10 @@
-import { DateTime } from 'luxon';
 import Enrollment from '@/models/Enrollment';
 import { ICourse } from '@/models/Course';
 import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
 import { generateScheduledDates } from '../lib/enrollmentUtils';
-import { DEFAULT_LESSON_CUTOFF_TIME, FAMILY_TIMEZONE } from '@/utils/constants';
+import { DEFAULT_LESSON_CUTOFF_TIME } from '@/utils/constants';
+import { familyNow } from '@/utils/dateUtils';
 
 type IPopulatedCourse = Omit<ICourse, 'subject'> & { subject: ISubject };
 
@@ -238,7 +238,7 @@ async function processOverdueLessons(
 ): Promise<void> {
   // 1. Parse cutoff into today's datetime
   const [hours, minutes] = cutoffTime.split(':').map(Number);
-  const nowFamilyTz = DateTime.now().setZone(FAMILY_TIMEZONE);
+  const nowFamilyTz = familyNow();
   const todayISO = nowFamilyTz.toISODate()!; // e.g. "2026-06-15"
   const cutoffFamilyTz = nowFamilyTz.set({
     hour: hours,

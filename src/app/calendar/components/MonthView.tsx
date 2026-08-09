@@ -6,6 +6,7 @@ import { GetCalendarMonthViewData } from '../types';
 import CalendarGrid from './CalendarGrid';
 import MonthTopBar from './MonthTopBar';
 import { useState } from 'react';
+import { familyTodayAsDate } from '@/utils/dateUtils';
 
 type MonthViewProps = {
   studentId: string;
@@ -37,7 +38,7 @@ export default function MonthView({ studentId, month: initialMonth }: MonthViewP
     );
   
   // TODO: midnight-rollover — add a timer that updates `today` at local midnight
-  const today = new Date();
+  const today = familyTodayAsDate();
   const days = data?.calendarMonthView.days ?? [];
 
   return (
