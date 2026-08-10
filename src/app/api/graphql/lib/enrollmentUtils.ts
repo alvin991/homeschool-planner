@@ -1,5 +1,6 @@
 import { ICourse, ICourseLessonNode } from '@/models/Course';
-import { ILessonSnapshot, ILessonOccurrence } from '@/models/Enrollment';
+import { ILessonSnapshot, ILessonOccurrence, IEnrollment } from '@/models/Enrollment';
+import { DateTime } from 'luxon';
 
 export function flattenLessonTree(
   nodes: ICourseLessonNode[]
@@ -150,3 +151,16 @@ export function computeSchedule(
   return { lessonSnapshots, lessonOccurrences, scheduledDates };
 }
 
+type RescheduleEnrollmentInput = Pick<
+  IEnrollment,
+  'scheduled_dates' | 'lesson_occurrences' | 'weekdays' | 'week_interval' | 'suspension_periods' | 'end_date'
+>;
+
+export function rescheduleTailFrom(enrollment: RescheduleEnrollmentInput, fromIndex: number, anchorDate: DateTime) {
+  const { scheduled_dates, lesson_occurrences, weekdays, week_interval, suspension_periods, end_date } = enrollment;
+
+  const tailDates = scheduled_dates.slice(fromIndex);
+
+  const tailOccurrences = tailDates.map((_, idx) => lesson_occurrences.find((occurrence) => occurrence.sequence === fromIndex +idx + 1));
+
+}
