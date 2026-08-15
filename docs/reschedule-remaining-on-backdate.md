@@ -86,7 +86,7 @@ overwriting the whole tail regardless of status. That's Gap B below.
 
 ## Implementation roadmap
 
-1. **`enrollmentUtils.ts` — `rescheduleTailFrom(enrollment, fromIndex, anchorDate)`.** 🔧 *In progress — see below.*
+1. **`enrollmentUtils.ts` — `rescheduleTailFrom(enrollment, fromIndex, anchorDate)`.** ✅ *Done — see below.*
 2. **`enrollmentUtils.ts` — `canRescheduleRemaining(enrollment, occurrenceSequence, lessonId)`.** Not started.
 3. **`calendarResolvers.ts`** — refactor `processOverdueLessons` to call `rescheduleTailFrom`; `calendarMonthView` computes `canRescheduleRemaining` per row. Not started.
 4. **Schema** — `rescheduleRemaining: Boolean` on `UpdateOccurrenceStatusInput` (default `true`), `can_reschedule_remaining: Boolean!` on `MonthViewLesson`. Not started.
@@ -95,7 +95,7 @@ overwriting the whole tail regardless of status. That's Gap B below.
 
 ## Step 1 deep-dive: `rescheduleTailFrom`
 
-### Current WIP state (uncommitted, on `feat/reschedule-remaining-on-backdate`)
+### Final state (committed)
 
 ```ts
 type RescheduleEnrollmentInput = Pick<
@@ -103,17 +103,54 @@ type RescheduleEnrollmentInput = Pick<
   'scheduled_dates' | 'lesson_occurrences' | 'weekdays' | 'week_interval' | 'suspension_periods' | 'end_date'
 >;
 
-export function rescheduleTailFrom(enrollment: RescheduleEnrollmentInput, fromIndex: number, anchorDate: DateTime) {
+export function rescheduleTailFrom(enrollment: RescheduleEnrollmentInput, fromIndex: number, anchorDate: DateTime): Date[] {
   const { scheduled_dates, lesson_occurrences, weekdays, week_interval, suspension_periods, end_date } = enrollment;
+
+  if (lesson_occurrences.length !== scheduled_dates.length) {
+    throw new Error(
+      `Enrollment data inconsistent: ${lesson_occurrences.length} lesson_occurrences vs ${scheduled_dates.length} scheduled_dates`
+    );
+  }
 
   const tailDates = scheduled_dates.slice(fromIndex);
 
-  const tailOccurrences = tailDates.map((_, idx) =>
-    lesson_occurrences.find((occurrence) => occurrence.sequence === fromIndex + idx + 1)
+  const tailOccurrences = tailDates.map((_, idx) => {
+    const sequence = fromIndex + idx + 1;
+    const occurrence = lesson_occurrences.find((occ) => occ.sequence === sequence);
+    if (!occurrence) {
+      throw new Error(`No occurrence found for sequence ${sequence}`);
+    }
+    return occurrence;
+  });
+
+  const isPending = (occurrence: ILessonOccurrence) =>
+    occurrence.lessons.some((lesson) => lesson.status === 'pending');
+
+  const pendingCount = tailOccurrences.filter(isPending).length;
+
+  const { year, month, day } = anchorDate.plus({ days: 1 });
+  const startDate = new Date(year, month - 1, day);
+  const newTailDates = generateScheduledDates(
+    startDate,
+    weekdays,
+    week_interval,
+    (suspension_periods ?? []).map((p) => ({ start: p.start, end: p.end })),
+    pendingCount,
+    end_date
   );
 
-  // ⬅ stopped here — still need: isPending, pendingCount, generateScheduledDates
-  // call, cursor-based reassembly, and the return statement.
+  if (newTailDates.length < pendingCount) {
+    throw new Error(
+      `Not enough scheduled days — ${newTailDates.length} days available for ${pendingCount} lessons`
+    );
+  }
+
+  let cursor = 0;
+  const newTail = tailDates.map((oldDate, i) =>
+    isPending(tailOccurrences[i]) ? newTailDates[cursor++] : oldDate
+  );
+
+  return [...scheduled_dates.slice(0, fromIndex), ...newTail];
 }
 ```
 
@@ -147,15 +184,23 @@ requires every field) — that's exactly why the narrow type exists.
    `lesson_rate >= 1` chunking case is exactly why lessons are a nested
    array). Count how many tail occurrences are still pending → `pendingCount`.
 4. Call `generateScheduledDates(startDate, weekdays, week_interval, suspensions, pendingCount, end_date)`,
-   where `startDate` = the day after `anchorDate` (`anchorDate.plus({days:1}).toISODate()`).
-   This function has zero awareness of the tail's old dates or which
-   positions are resolved — it just returns `pendingCount` fresh dates
-   following the pattern.
+   where `startDate` = the day after `anchorDate`, built via
+   `new Date(year, month - 1, day)` from `anchorDate.plus({days:1})`'s
+   destructured components — **not** `.toJSDate()` (preserves the current
+   time-of-day, which can roll into the wrong day once
+   `generateScheduledDates`'s internal `setHours(0,0,0,0)` zeroes it in the
+   *server's* local timezone — a real bug caught during implementation, same
+   class as the `DayCell.tsx` UTC bug) and **not** a `.toISODate()` string
+   round-trip either (works, but only because the server happens to run in
+   UTC — the component-based version is correct regardless of the server's
+   timezone, since `generateScheduledDates` only ever uses local-zone
+   `Date` methods internally, never `.toISOString()`/UTC ones). This
+   function has zero awareness of the tail's old dates or which positions
+   are resolved — it just returns up to `pendingCount` fresh dates
+   following the pattern (see the shortfall guard below for "up to").
 5. Reassemble: walk `tailDates` again position by position; pending →
    consume the next generated date (cursor-based); resolved → keep the old
    date untouched. Final result = unchanged head + reassembled tail.
-
-Steps 4 and 5 aren't in the code yet (see WIP snippet above).
 
 ### Accepted limitation: no chronological reconciliation
 
@@ -183,23 +228,44 @@ dates." Fully solving the chronological-reconciliation problem would be a
 much bigger feature than warranted for a rare situation in a 2-person
 household's use of this app.
 
-### Open question, not yet decided
+### Two open questions — both resolved
 
-`generateScheduledDates` can silently return *fewer* dates than requested if
-it hits `end_date` or its `MAX_ITERATIONS` cap. `createEnrollment`/`updateEnrollment`
-both guard against this (`if (scheduledDates.length < ...) throw`); the
-current `processOverdueLessons` splice doesn't, and this function doesn't
-yet either. Worth adding:
+**Shortfall guard: added.** `generateScheduledDates` can silently return
+*fewer* dates than requested if it hits `end_date` or its `MAX_ITERATIONS`
+cap. Traced through what the *unguarded* code would have done: `isPending`
+positions pull from `newTailDates[cursor++]`, which returns `undefined` on
+an out-of-bounds read rather than throwing — so a shortfall would have
+silently leaked `undefined` into the final `scheduled_dates` array for
+however many pending positions ran out of generated dates. Considered (and
+rejected) generating "as many as fit" instead of throwing — walked through
+concretely why that doesn't actually help: whatever's left over from the
+shortfall still has nowhere valid to go (`undefined`, a stale/misleading
+date, or pushing past `end_date`, which defeats the point of `end_date`
+existing at all). It's a genuine, irreconcilable scheduling conflict — more
+lessons than remaining valid days — that only a person can actually resolve
+(extend `end_date`, drop lessons, accept the course runs long), so failing
+loudly is correct, not just "the easy option." Matches the exact message
+convention `createEnrollment`/`updateEnrollment`/`previewEnrollmentSchedule`
+already use for this same class of error (confirmed via `grep`, all three
+say `` `Not enough scheduled days — ${X} days available for ${Y} lessons}` ``
+verbatim) — this app has already independently converged on "throw" for
+this problem three times before; `rescheduleTailFrom` is a fourth. The
+check belongs in `rescheduleTailFrom` itself, not inside
+`generateScheduledDates` — matches how the three existing callers already
+do it (check-after-call, not baked into the shared generator), and doesn't
+risk changing behavior for other existing callers of `generateScheduledDates`.
+Bonus: once step 3 refactors `processOverdueLessons` to call
+`rescheduleTailFrom` instead of its own inline splice, it inherits this
+guard for free — closing a pre-existing gap in that function without
+needing to touch it directly for this reason.
 
-```ts
-if (newDates.length < pendingCount) {
-  throw new Error(
-    `Not enough remaining days to reschedule ${pendingCount} lesson(s) before end_date`
-  );
-}
-```
-
-Undecided whether to add this now (this function is new code, so it's a
-clean opportunity to close a pre-existing gap in the same class of logic) or
-leave it matching the existing silent behavior for consistency with
-`processOverdueLessons` until that call site is refactored in step 3 anyway.
+**Missing-occurrence lookup: throws.** A `.find()` miss for an expected
+`sequence` (different from the length-mismatch case above — this is a gap
+or duplicate in sequence numbers that could exist even when the overall
+counts happen to match) now throws immediately inside the `tailOccurrences`
+lookup, rather than silently falling through as "not pending." Chosen for
+consistency with the length-mismatch guard — same category of "the data
+isn't in the shape this function assumes." Side benefit: once
+`tailOccurrences` can never contain `undefined`, `isPending` no longer needs
+an optional parameter or the `!!occurrence &&` guard — failing fast at the
+boundary simplified everything downstream.
