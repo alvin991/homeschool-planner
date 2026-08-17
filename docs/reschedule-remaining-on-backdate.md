@@ -87,7 +87,7 @@ overwriting the whole tail regardless of status. That's Gap B below.
 ## Implementation roadmap
 
 1. **`enrollmentUtils.ts` — `rescheduleTailFrom(enrollment, fromIndex, anchorDate)`.** ✅ *Done — see below.*
-2. **`enrollmentUtils.ts` — `canRescheduleRemaining(enrollment, occurrenceSequence, lessonId)`.** Not started.
+2. **`enrollmentUtils.ts` — `canRescheduleRemaining(enrollment, occurrenceSequence, lessonId)`.** ✅ *Done.*
 3. **`calendarResolvers.ts`** — refactor `processOverdueLessons` to call `rescheduleTailFrom`; `calendarMonthView` computes `canRescheduleRemaining` per row. Not started.
 4. **Schema** — `rescheduleRemaining: Boolean` on `UpdateOccurrenceStatusInput` (default `true`), `can_reschedule_remaining: Boolean!` on `MonthViewLesson`. Not started.
 5. **`enrollmentResolvers.ts` (`updateOccurrenceStatus`)** — resolve occurrence, detect backdate, re-derive eligibility, call `rescheduleTailFrom` or just save. Not started.

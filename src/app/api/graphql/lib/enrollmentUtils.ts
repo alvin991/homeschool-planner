@@ -214,3 +214,18 @@ export function rescheduleTailFrom(enrollment: RescheduleEnrollmentInput, fromIn
   //Final result = the untouched head (scheduled_dates.slice(0, fromIndex)) + that reassembled tail from step 5.
   return [...scheduled_dates.slice(0, fromIndex), ...newTail];
 }
+
+type CanRescheduleRemainingInput = Pick<IEnrollment, 'lesson_occurrences'>;
+
+export function canRescheduleRemaining(enrollment: CanRescheduleRemainingInput, occurrenceSequence: number, lessonId: string): boolean {
+  const sorted = [...enrollment.lesson_occurrences].sort((a, b) => a.sequence - b.sequence);
+  const firstOpen = sorted.find((o) => o.lessons.some((l) => l.status === 'pending'));
+
+  if (!firstOpen || firstOpen.sequence !== occurrenceSequence) {
+    return false;
+  }
+
+  return firstOpen.lessons.every(
+    (l) => l.lesson_id.toString() === lessonId || l.status !== 'pending'
+  );
+}
