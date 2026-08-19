@@ -5,10 +5,12 @@ import {
   generateLessonOccurrences,
   generateScheduledDates,
   computeSchedule,
+  rescheduleTailFrom,
+  canRescheduleRemaining,
 } from '../lib/enrollmentUtils';
 import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
-import { familyToday } from '@/utils/dateUtils';
+import { familyNow, familyToday } from '@/utils/dateUtils';
 
 export const enrollmentResolvers = {
   Query: {
@@ -101,26 +103,60 @@ export const enrollmentResolvers = {
           lessonId: string;
           status: string;
           completedDate?: string;
+          rescheduleRemaining?: boolean;
         };
       }
     ) => {
-      const { enrollmentId, lessonId, status, completedDate } = input;
+      const { enrollmentId, lessonId, status, completedDate, rescheduleRemaining } = input;
 
       const enrollment = await Enrollment.findById(enrollmentId);
       if (!enrollment) throw new Error('Enrollment not found');
 
-      const lesson = enrollment.lesson_occurrences
-        .flatMap((o) => o.lessons)
-        .find((l) => l.lesson_id.toString() === lessonId);
-      if (!lesson) throw new Error('Lesson not found');
+      const occurrence = enrollment.lesson_occurrences.find((o) =>
+        o.lessons.some((l) => l.lesson_id.toString() === lessonId)
+      );
+      if (!occurrence) throw new Error('Lesson not found');
 
-      lesson.status = status as 'pending' | 'completed' | 'skipped';
-      lesson.completed_date =
-        status === 'completed'
-          ? completedDate
-            ? new Date(completedDate)
-            : new Date()
-          : undefined;
+      const lesson = occurrence.lessons.find((l) => l.lesson_id.toString() === lessonId)!;
+
+      if (status === 'completed') {
+        const completedDateStr = completedDate ?? familyToday();
+        const scheduledSlotStr = new Date(enrollment.scheduled_dates[occurrence.sequence - 1])
+          .toISOString()
+          .slice(0, 10);
+
+        if (occurrence.sequence > 1) {
+          const prevSlotStr = new Date(enrollment.scheduled_dates[occurrence.sequence - 2])
+            .toISOString()
+            .slice(0, 10);
+          if (completedDateStr < prevSlotStr) {
+            throw new Error(
+              `completedDate cannot be before the previous lesson's scheduled date (${prevSlotStr})`
+            );
+          }
+        }
+        const startDateStr = new Date(enrollment.start_date).toISOString().slice(0, 10);
+        if (completedDateStr < startDateStr) {
+          throw new Error(
+            `completedDate cannot be before the enrollment's start date (${startDateStr})`
+          );
+        }
+
+        const isBackdate = completedDateStr < scheduledSlotStr;
+        if (isBackdate) {
+          const eligible = canRescheduleRemaining(enrollment, occurrence.sequence, lessonId);
+          const wantsReschedule = rescheduleRemaining ?? true;
+          if (eligible && wantsReschedule) {
+            enrollment.scheduled_dates = rescheduleTailFrom(enrollment, occurrence.sequence, familyNow());
+          }
+        }
+
+        lesson.status = 'completed';
+        lesson.completed_date = new Date(completedDateStr);
+      } else {
+        lesson.status = status as 'pending' | 'skipped';
+        lesson.completed_date = undefined;
+      }
 
       await enrollment.save();
       return true;
