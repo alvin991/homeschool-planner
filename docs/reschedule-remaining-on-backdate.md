@@ -91,7 +91,9 @@ overwriting the whole tail regardless of status. That's Gap B below.
 3. **`calendarResolvers.ts`** — refactor `processOverdueLessons` to call `rescheduleTailFrom`; `calendarMonthView` computes `canRescheduleRemaining` per row. ✅ *Done.*
 4. **Schema** — `rescheduleRemaining: Boolean` on `UpdateOccurrenceStatusInput` (default `true`), `can_reschedule_remaining: Boolean!` on `MonthViewLesson`. ✅ *Done — turned out to need a real split of `MonthViewLesson`/`MonthViewDay` off of the previously-shared `DayViewLesson`/`DayView` (there was no separate `MonthViewLesson` GraphQL type before this — `calendarMonthView` had been reusing `DayView`/`DayViewLesson` directly), rather than just adding one field to an existing type.*
 5. **`enrollmentResolvers.ts` (`updateOccurrenceStatus`)** — resolve occurrence, detect backdate, re-derive eligibility, call `rescheduleTailFrom` or just save. ✅ *Done — also fixed a residual bug found along the way: the `completedDate` fallback was still bare `new Date()` (server-local/UTC), the exact mistake this whole branch exists to eliminate; now `familyToday()` like every other call site.*
-6. **`DayCell.tsx`** — date input + checkbox in the popover. Not started.
+6. **`DayCell.tsx`** — date input + checkbox in the popover. ✅ *Done — also needed a small prerequisite fix: `DayCell` never actually knew its own calendar date (only `dayNumber`, a bare day-of-month number), needed for the "is the picked date earlier than this cell's own date" check. `CalendarGrid.tsx` now computes and passes a `date` prop per cell. `PreviewCalendar.tsx` (the other `CalendarGrid` caller) needed no changes, since it only renders `CalendarGrid` directly and the date computation happens inside it.*
+
+**All 6 steps complete.** Feature implemented end to end on `feat/reschedule-remaining-on-backdate`.
 
 ## Step 1 deep-dive: `rescheduleTailFrom`
 

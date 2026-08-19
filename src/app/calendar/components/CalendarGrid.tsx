@@ -39,6 +39,7 @@ export default function CalendarGrid({ days, today, month }: CalendarGridProps) 
     const lessons = isValid ? (lessonsByDay.get(dayNumber) ?? []) : [];
 
     const isToday = isValid && isCurrentMonth && dayNumber === todayDay;
+    const date = `${month}-${String(dayNumber).padStart(2, '0')}`;
 
     return (
       <DayCell
@@ -48,6 +49,7 @@ export default function CalendarGrid({ days, today, month }: CalendarGridProps) 
         lessons={lessons}
         isToday={isToday}
         column={i % 7}
+        date={date}
       />
     );
   });
