@@ -24,87 +24,36 @@ ones.
 - **Student cutoff-time not displaying** (v1.6.1) — edit form always showed
   the default (20:00) instead of the saved value; `GET_STUDENTS` query never
   requested the field.
-
-## Urgent — production bug, fix independently of the backlog below
-
-**Lesson-completion dates are recorded in UTC instead of the family's local
-date.** `DayCell.tsx:142`'s "Complete" action uses `new Date().toISOString()
-.slice(0,10)`, which reads the **UTC** calendar date, not the family's
-(`America/Edmonton`, UTC-6/-7). Any completion marked after ~5–6pm local is
-already "tomorrow" in UTC — squarely inside the default 20:00 cutoff window,
-so this is likely wrong most evenings, right when the family actually does
-its "did we finish today" check. (Found while designing the fix for backlog
-#1 below — went to fix `DayView.tsx`'s equivalent bug and initially assumed,
-incorrectly, that `DayCell.tsx` "already did this right.")
-
-- Root cause: trusting the browser's own clock/timezone at all, rather than
-  the app's single explicit `FAMILY_TIMEZONE` constant — the same shaky
-  assumption behind two earlier timezone bugs in this app
-  (`processOverdueLessons`'s cutoff check; the cutoff-time display bug).
-  `MonthView.tsx:40` (`const today = new Date()`) and `calendar/page.tsx:18`
-  (month default) have the identical class of issue and are cheap to fix in
-  the same pass.
-- **Fix locked (2026-08-07): align the whole app on one setting** rather
-  than patch `DayCell.tsx:142` with browser-local `localToday()` and call it
-  done — read "today" from `FAMILY_TIMEZONE` explicitly, client and server:
-  1. `utils/dateUtils.ts` — add `familyNow(): DateTime` (`DateTime.now()
-     .setZone(FAMILY_TIMEZONE)`) and `familyToday(): string`
-     (`familyNow().toISODate()`), replacing `localToday()` — rename it
-     rather than just patching its internals, so nothing reading the name
-     "local" is tempted to mean "the browser's own clock" again. Also add
-     `familyTodayAsDate(): Date` — a native `Date` built from `familyNow()`'s
-     year/month/day via the local constructor (`new Date(y, m-1, d)`) — for
-     `MonthView.tsx`, the one spot needing a `Date`-typed value;
-     `CalendarGrid`/`MonthTopBar` only ever read `Date` via local getters
-     (`getDate()`/`getMonth()`/`getFullYear()`, never `toISOString()`), so
-     they stay correct fed a `Date` built this way — no downstream prop-type
-     changes needed. This module has no server-only imports today, so it's
-     safe to import from both client components and resolvers — one shared
-     implementation instead of two that happen to agree.
-  2. `calendarResolvers.ts` — swap `processOverdueLessons`'s inline
-     `DateTime.now().setZone(FAMILY_TIMEZONE)` for `familyNow()`.
-  3. `DayView.tsx:75` — change `completedDate: date` to
-     `completedDate: familyToday()`.
-  4. `DayCell.tsx:142` — change `new Date().toISOString().slice(0,10)` to
-     `familyToday()`. This line is the actual production bug.
-  5. `MonthView.tsx:40` / `calendar/page.tsx:18` — swap their browser-local
-     `new Date()` today/month defaults for `familyTodayAsDate()` /
-     `familyToday().slice(0,7)` respectively.
-  6. `PreviewCalendar.tsx:57` — same bug as `MonthView.tsx:40` (`const today
-     = new Date()`), found via a full `new Date(` audit of the codebase; it
-     feeds the same `CalendarGrid`/`MonthTopBar` components. Swap for
-     `familyTodayAsDate()`.
-  7. `enrollmentResolvers.ts:87-88` (`previewEnrollmentSchedule`) — computes
-     a default "current month" via `now.getFullYear()/getMonth()` on a bare
-     server-side `new Date()`, i.e. the server's own deployment timezone
-     (likely UTC) rather than the family's — the same root cause as the
-     very first timezone bug in this app, just a rarer trigger (only wrong
-     right at a month boundary). Replace with `familyToday().slice(0,7)`.
-- Audited every `new Date(` in the codebase (64 call sites) while designing
-  this fix — everything else either parses an already-known date value
-  (not "what is now") or captures an instant for a timestamp field
-  (`completed_date` fallback, `last_synced_at`) or a live clock display
-  (`DayView.tsx`'s ticking `now`), none of which are timezone-sensitive in
-  the way described above.
-- Not yet started. Small, contained, no schema/data changes — safe to ship
-  on its own ahead of backlog #1.
+- **Lesson-completion dates recorded in UTC instead of the family's local
+  date.** `DayCell.tsx`'s "Complete" action used `new Date().toISOString()
+  .slice(0,10)` — the UTC calendar date, not the family's — wrong most
+  evenings, right when completions actually happen. Fixed by establishing
+  `familyNow()`/`familyToday()`/`familyTodayAsDate()` (`utils/dateUtils.ts`)
+  as the single source of truth for "what day is it," client and server,
+  replacing every place that had been trusting the browser's or the
+  server's own ambient clock/timezone instead. **Merged to `main`; deploy/
+  tag pending.**
+- **Fix schedule drift from missed/late lesson completions.** Backdating a
+  completion now offers a choice — reschedule the remaining lessons (undo
+  the drift) or just complete this one — and the underlying auto-reschedule
+  sweep no longer silently overwrites already-completed occurrences out of
+  sequence. Full design, decisions, and implementation detail:
+  [`docs/reschedule-remaining-on-backdate.md`](reschedule-remaining-on-backdate.md).
+  14 unit tests added for the two new pure helpers
+  (`rescheduleTailFrom`/`canRescheduleRemaining`); manually verified in the
+  app across all four core paths. **Merged to `main`; deploy/tag pending.**
+  One known follow-up, not yet designed: reopening a lesson doesn't account
+  for a prior reschedule (self-healing via the existing overdue sweep, not
+  permanent corruption — see that file's own follow-up section).
 
 ## Backlog (rough priority order)
 
-1. **Fix schedule drift from missed/late lesson completions — current
-   priority.** Two related gaps (Gap A: a completion gets recorded against
-   whatever date the calendar page happens to be showing, not the day it
-   actually happened — **fixed**, shipped as part of `fix/completion-date-timezone`;
-   Gap B: `processOverdueLessons` blindly overwrites already-completed
-   occurrences' dates when rescheduling a tail — **not yet fixed**) combine
-   into one recurring pain point: miss a cutoff once, and the rest of the
-   enrollment drifts forward permanently, with no way to correct it.
-   **Full design (decisions locked, implementation roadmap, in-progress
-   notes) lives in [`docs/reschedule-remaining-on-backdate.md`](reschedule-remaining-on-backdate.md)
-   — this entry is intentionally just a pointer, kept short so it doesn't
-   duplicate and drift out of sync with that file.**
-   In progress on `feat/reschedule-remaining-on-backdate`; step 1 of 6
-   (`rescheduleTailFrom` in `enrollmentUtils.ts`) partway done.
+1. ~~Fix schedule drift from missed/late lesson completions.~~ ✅ **Done**
+   — see "Recently shipped" above and
+   [`docs/reschedule-remaining-on-backdate.md`](reschedule-remaining-on-backdate.md)
+   for full detail. Kept at position #1 rather than renumbered, to avoid
+   breaking the cross-references other items below make to specific
+   numbers.
 
 2. **Shared "selected student" context + nav redesign.** Enrollments has its
    own local student-selector state; Calendar has none (hardcoded fallback
