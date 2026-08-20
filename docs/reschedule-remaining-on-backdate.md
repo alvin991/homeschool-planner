@@ -271,3 +271,55 @@ isn't in the shape this function assumes." Side benefit: once
 `tailOccurrences` can never contain `undefined`, `isPending` no longer needs
 an optional parameter or the `!!occurrence &&` guard — failing fast at the
 boundary simplified everything downstream.
+
+## Follow-up (not in scope for this branch): Reopen doesn't account for a prior reschedule
+
+**Found live during manual testing, not just theoretical.** Repeatedly
+completing a lesson (with a backdate + reschedule-remaining) and then
+reopening it, a few times in a row, left two originally-distinct lessons
+(M101 chapter 1 and chapter 2, `lesson_rate: 1`, so genuinely separate
+occurrences) both pointing at the exact same `scheduled_date`. Root cause:
+`updateOccurrenceStatus`'s `else` branch (the reopen/skip path) only ever
+does `lesson.status = ...; lesson.completed_date = undefined;` — it never
+touches `scheduled_dates` at all. So reopening a lesson doesn't restore
+anything; the occurrence's slot is left exactly wherever the *last*
+reschedule (from completing it, or from a `processOverdueLessons` sweep
+that ran while it sat pending) happened to leave it. Repeated
+complete/reopen cycles compound, since each completion can trigger another
+`rescheduleTailFrom` call and reopen never undoes the previous one.
+
+**Why "just call `rescheduleTailFrom` on reopen too" isn't a simple
+tack-on** — three real open questions, not one:
+
+1. **No natural anchor.** Completing something has `completedDate` to
+   compare against the occurrence's slot, which is what makes "is this a
+   backdate" well-defined. Reopening records no date at all — there's
+   nothing to compare, so it can't reuse the same backdate-detection logic.
+   The honest framing would have to be something closer to "unconditionally
+   give this occurrence (and the pending tail after it) a fresh date,
+   anchored on today" — a different question than anything `rescheduleTailFrom`
+   currently answers.
+2. **Unconditional reschedule may be too aggressive.** If someone reopens a
+   lesson that's still sitting on a perfectly sensible *future* date (e.g.
+   completed a week early, then changed their mind), forcibly reshuffling
+   the schedule just because it got reopened — even though nothing about
+   its current slot is actually wrong — could cause more churn than it
+   fixes. Whether this should be conditional (only reschedule if the
+   current slot no longer makes sense — e.g. it's in the past) or
+   unconditional needs a real decision, not an assumption.
+3. **The `lesson_rate >= 1` sibling case needs the same care
+   `canRescheduleRemaining` got, mirrored for reopen.** If an occurrence
+   has multiple lessons and only one gets reopened while its siblings stay
+   completed, does the whole occurrence need a new date? That's the same
+   category of question the eligibility check answers for completion — it
+   would need an equivalent for reopening, not a shortcut.
+
+**Not designed yet.** Tracked here rather than folded into this branch,
+since it's a genuinely separate problem sitting on top of an already-built
+and reviewed feature, not a quick addition to it. In the meantime, the
+concrete bug found while testing is a data-corruption risk specific to
+manually cycling complete/reopen a few times in a row during testing —
+low-stakes to fix directly in dev data (re-point the two `scheduled_date`
+values, or delete/recreate the enrollment for a clean run) rather than
+something requiring an immediate code fix to unblock testing the rest of
+the feature.
