@@ -33,6 +33,7 @@ export type MonthViewLesson = {
   lesson_title: string;
   status: LessonOccurrenceStatus;
   sequence: number;
+  can_reschedule_remaining: boolean;
 };
 
 export type MonthViewDay = {

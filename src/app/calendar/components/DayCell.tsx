@@ -26,12 +26,14 @@ export default function DayCell({
   lessons,
   isToday,
   column,
+  date,
 }: {
   dayNumber: number;
   isValid: boolean;
   lessons: MonthViewLesson[];
   isToday: boolean;
   column: number;
+  date: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hasOverflow, setHasOverflow] = useState(false);
@@ -42,6 +44,9 @@ export default function DayCell({
   const popoverPosition = column === 6 ? 'right-full' : 'left-full';
   const [popoverTop, setPopoverTop] = useState(0);
   const cellRef = useRef<HTMLDivElement>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [pickedDate, setPickedDate] = useState(familyToday());
+  const [rescheduleChecked, setRescheduleChecked] = useState(true);
 
   useEffect(() => {
     const checkOverflow = () => {
@@ -63,6 +68,7 @@ export default function DayCell({
     const handleClickOutside = (e: MouseEvent) => {
       if (!popoverRef.current?.contains(e.target as Node)) {
         setPopoverLesson(null);
+        setIsCompleting(false);
       }
     };
 
@@ -126,33 +132,87 @@ export default function DayCell({
               {popoverLesson.status}
             </span>
             {/* Action buttons — outlined */}
-            <div className="flex gap-1">
-              {statusActions[popoverLesson.status].map((action) => (
+            {!isCompleting && (
+              <div className="flex gap-1">
+                {statusActions[popoverLesson.status].map((action) => (
+                  <button
+                    key={action.value}
+                    className="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100"
+                    onClick={() => {
+                      if (action.value === 'completed') {
+                        setPickedDate(familyToday());
+                        setRescheduleChecked(true);
+                        setIsCompleting(true);
+                        return;
+                      }
+                      updateStatus({
+                        variables: {
+                          input: {
+                            enrollmentId: popoverLesson.enrollment_id,
+                            lessonId: popoverLesson.lesson_id,
+                            status: action.value,
+                            completedDate: null,
+                          },
+                        },
+                      });
+                      setPopoverLesson(null);
+                    }}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {isCompleting && (
+            <div className="mb-3 space-y-2">
+              <input
+                type="date"
+                className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
+                value={pickedDate}
+                max={familyToday()}
+                onChange={(e) => setPickedDate(e.target.value)}
+              />
+              {pickedDate < date && popoverLesson.can_reschedule_remaining && (
+                <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={rescheduleChecked}
+                    onChange={(e) => setRescheduleChecked(e.target.checked)}
+                  />
+                  Reschedule remaining lessons
+                </label>
+              )}
+              <div className="flex justify-end gap-1">
                 <button
-                  key={action.value}
                   className="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100"
+                  onClick={() => setIsCompleting(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="rounded border border-slate-700 bg-slate-700 px-2 py-0.5 text-xs text-white hover:bg-slate-600"
                   onClick={() => {
                     updateStatus({
                       variables: {
                         input: {
                           enrollmentId: popoverLesson.enrollment_id,
                           lessonId: popoverLesson.lesson_id,
-                          status: action.value,
-                          completedDate:
-                            action.value === 'completed'
-                              ? familyToday()
-                              : null,
+                          status: 'completed',
+                          completedDate: pickedDate,
+                          rescheduleRemaining: rescheduleChecked,
                         },
                       },
                     });
                     setPopoverLesson(null);
                   }}
                 >
-                  {action.label}
+                  Save
                 </button>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <h3 className="font-semibold">{popoverLesson.course_title}</h3>
           <p className="text-sm">{popoverLesson.lesson_title}</p>
@@ -183,6 +243,7 @@ export default function DayCell({
                   pillRect.top - cellRect.top + pillRect.height / 2 - 9 - 12
                 );
                 setPopoverLesson(lesson);
+                setIsCompleting(false);
               }}
             >
               <span

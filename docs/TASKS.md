@@ -3,7 +3,7 @@
 Living backlog for the homeschool-planner app. Written to be readable by any AI
 assistant or human picking up the project cold — no prior conversation needed.
 
-Last updated: 2026-08-09
+Last updated: 2026-08-10
 
 ## Context
 
@@ -92,153 +92,19 @@ incorrectly, that `DayCell.tsx` "already did this right.")
 ## Backlog (rough priority order)
 
 1. **Fix schedule drift from missed/late lesson completions — current
-   priority.** Two related gaps combine into one recurring real-world pain
-   point (wife/kids forget to mark a lesson complete before the cutoff, it
-   auto-reschedules to tomorrow, and by the time it's marked complete the
-   rest of the enrollment has permanently drifted forward):
-   - **Gap A:** marking a lesson complete uses whatever date the currently-
-     viewed calendar page happens to show ([`DayView.tsx:75`](src/app/calendar/components/DayView.tsx#L75) →
-     [`enrollmentResolvers.ts:117-123`](src/app/api/graphql/resolvers/enrollmentResolvers.ts#L117-L123)),
-     not necessarily the day it was actually done — so a lesson already
-     bumped to tomorrow by `processOverdueLessons` stays mis-dated even
-     after being marked complete.
-   - **Gap B:** `processOverdueLessons`'s tail-splice-and-regenerate logic
-     doesn't distinguish already-completed occurrences from pending ones in
-     the tail it overwrites (documented in the `INVARIANT` comment directly
-     above the function in `calendarResolvers.ts`) — completing lessons out
-     of sequence risks a later completed lesson's real date being silently
-     rewritten.
-   - **Design direction locked (2026-08-06):** when a lesson is marked
-     complete with a backdated completion date (earlier than its currently-
-     assigned scheduled slot), treat it as a correction — regenerate
-     `scheduled_dates` for the remaining *still-pending* occurrences after
-     it, reusing the same splice-and-regenerate mechanism
-     `processOverdueLessons` already has, but skipping over already-
-     completed occurrences instead of blindly overwriting the whole tail.
-     Fixes both the display glitch and the permanent schedule drift from one
-     mechanism, without needing to persist separate reschedule history.
-   - **Trigger mechanism locked (2026-08-06): date picker in `DayCell.tsx`'s
-     popover**, not drag-and-drop. Drag-and-drop was considered and dropped
-     — it runs into a real problem with no simple fix: a pending lesson
-     only ever renders in the one `DayCell` matching its current slot, so
-     if the correction target is in a different month there's no cell to
-     drop on, and auto-paging the month mid-drag (hover the nav arrow →
-     switch months → keep the drag session alive through a GraphQL
-     refetch) is a lot of fiddly state for a 2-user app. A plain
-     `<input type="date">` has no such visibility constraint, so it
-     handles month-boundary corrections for free. (`@dnd-kit` stays
-     scoped to the course lesson-tree UI — not needed for this fix.)
-     Extend the existing "Complete" action in `DayCell.tsx`'s popover:
-     instead of firing `updateOccurrenceStatus` immediately with today's
-     date, reveal an inline date input — **default = today, `max` = today,
-     no future dates selectable** — plus a "Reschedule remaining lessons"
-     checkbox.
-   - **Backdate-choice refinement (2026-08-07):** a backdated completion
-     shouldn't *always* silently pull the rest of the schedule back —
-     sometimes a lesson is legitimately done early/out of order (extra
-     effort that day) and the remaining pacing should be left alone. So
-     the checkbox above, when available, defaults to **checked**
-     (reschedule remaining — matches the original locked drift-correction
-     design) but can be unchecked for **"only complete this lesson"** (set
-     just this occurrence's status/`completed_date`; leave every other
-     occurrence's `scheduled_dates` entry untouched — display is already
-     correct either way since completed lessons place by `completed_date`,
-     not by slot).
-   - **Checkbox eligibility (2026-08-07):** the checkbox is only shown/
-     enabled when *both* hold:
-     1. The picked date is earlier than the popover's own day-cell date
-        (otherwise this isn't a backdate at all — the component already
-        knows this for free, since that's literally the cell it's
-        rendered in, no extra data needed).
-     2. Completing **this** lesson resolves the **first still-open
-        occurrence** in the enrollment's sequence — i.e. the lowest-
-        `sequence` occurrence that currently has any pending lesson. This
-        single condition covers two cases the client can't determine on
-        its own without help: an *earlier* occurrence (by sequence) is
-        still pending (out-of-order completion — exactly the INVARIANT
-        gap from Gap B, now guarded proactively instead of just
-        defensively), or a *sibling* lesson within this same occurrence is
-        still pending (the `lesson_rate >= 1` case, where an occurrence's
-        `lessons` array holds more than one lesson for that day — the day
-        isn't actually "done" yet, so the remaining schedule shouldn't
-        compress). Either way, rescheduling the tail wouldn't be safe, so
-        only "complete this lesson only" is available.
-     Since #2 needs visibility into *other* occurrences' status that the
-     frontend doesn't have, the server must compute and expose it (see
-     roadmap below) — and must **re-check it itself** inside the mutation
-     rather than trusting whatever the client sends, since client state
-     can be stale (another tab, a race).
-   - **Depends on the urgent timezone-alignment fix above shipping first**
-     — this feature's date comparisons/anchors and the "Urgent" section's
-     `familyNow()`/`familyToday()` helpers are the same code; no point
-     building this on top of the bug that fix replaces.
-   - **Implementation roadmap:**
-     1. `enrollmentUtils.ts` — add a pure `rescheduleTailFrom(enrollment,
-        fromIndex, anchorDate)` helper: takes the tail of `scheduled_dates`
-        from `fromIndex` on, splits it into still-pending occurrences (get
-        freshly generated dates via the existing `generateScheduledDates`,
-        starting the day after `anchorDate`) vs. already-completed ones
-        (date left untouched, positions preserved) — this is the INVARIANT
-        fix (Gap B) as a reusable, unit-testable function. Good first target
-        for backlog #13 (test coverage) since it's pure and isolated.
-        **`anchorDate` is always "today"** (family tz) for both call sites
-        below — never the backdated `completedDate` — so a deep backdate
-        can never generate a remaining-tail date that's already in the
-        past.
-     2. `enrollmentUtils.ts` — add a second pure helper,
-        `canRescheduleRemaining(enrollment, occurrenceSequence, lessonId)`:
-        sorts `lesson_occurrences` by `sequence`, finds the first one with
-        any `pending` lesson (`firstOpen`), and returns
-        `firstOpen?.sequence === occurrenceSequence && occurrence.lessons
-        .every(l => l.lesson_id === lessonId || l.status !== 'pending')` —
-        i.e. this occurrence is the first open one *and* every other
-        lesson in it (siblings) is already resolved. One shared
-        implementation used by both the query-side hint and the mutation-
-        side enforcement below keeps the two from drifting apart.
-     3. `calendarResolvers.ts` — refactor `processOverdueLessons`'s manual
-        splice block to call `rescheduleTailFrom` (anchor = today in
-        `FAMILY_TIMEZONE`) instead of duplicating the logic. Also, in
-        `calendarMonthView`, compute `canRescheduleRemaining(...)` per
-        pending lesson and include it on the row (see schema change next).
-     4. `inputs.typedefs.ts` / `MonthViewLesson` type — add
-        `rescheduleRemaining: Boolean` to `UpdateOccurrenceStatusInput`
-        (meaningful only when the completion is a genuine backdate;
-        ignored otherwise; **default when omitted: `true`**, preserving
-        today's behavior for `DayView.tsx`'s quick-toggle so it never has
-        to think about this), and add `can_reschedule_remaining: Boolean!`
-        to the `MonthViewLesson` GraphQL type + `calendar/types.ts`, fed
-        by step 2's helper.
-     5. `enrollmentResolvers.ts` (`updateOccurrenceStatus`) — change the
-        lesson lookup to resolve the *occurrence* first (need its
-        `sequence` to index into `scheduled_dates`, not just the flattened
-        lesson). When `status === 'completed'`, compare `completedDate`'s
-        calendar day to `scheduled_dates[occurrence.sequence - 1]`'s day
-        (string comparison, not raw `Date`, to avoid a repeat of the
-        earlier timezone bug class). If `completedDate` is earlier →
-        backdate: re-derive eligibility via
-        `canRescheduleRemaining(enrollment, occurrence.sequence, lessonId)`
-        — **don't trust `input.rescheduleRemaining` on its own**; only
-        actually reschedule when *both* the helper says it's eligible
-        *and* the client requested it. If eligible and requested, call
-        `rescheduleTailFrom(enrollment,
-        occurrence.sequence, todayFamilyTz)` (anchor = today, not
-        `completedDate` — see step 1) and save the result; otherwise save
-        only this occurrence's status/`completed_date` and leave
-        `scheduled_dates` alone. If not a backdate, behave exactly as
-        today (flag irrelevant). Worth a light guard too: reject/no-op if
-        `completedDate` is before the *previous* occurrence's scheduled
-        date or before `enrollment.start_date` — nonsensical regardless of
-        mode.
-     6. `DayCell.tsx` — extend the popover's "Complete" action (its UTC
-        date bug is already fixed by the urgent item above by this point):
-        reveal an inline `<input type="date">` — `defaultValue` and `max`
-        both = `familyToday()`, so no future date is selectable — plus a
-        "Reschedule remaining lessons" checkbox that only renders/enables
-        when the picked date is earlier than the popover's own cell date
-        *and* `lesson.can_reschedule_remaining` is true (default checked
-        when shown). On confirm, fire `updateOccurrenceStatus` with the
-        chosen `completedDate` and `rescheduleRemaining`.
-   - Not yet started.
+   priority.** Two related gaps (Gap A: a completion gets recorded against
+   whatever date the calendar page happens to be showing, not the day it
+   actually happened — **fixed**, shipped as part of `fix/completion-date-timezone`;
+   Gap B: `processOverdueLessons` blindly overwrites already-completed
+   occurrences' dates when rescheduling a tail — **not yet fixed**) combine
+   into one recurring pain point: miss a cutoff once, and the rest of the
+   enrollment drifts forward permanently, with no way to correct it.
+   **Full design (decisions locked, implementation roadmap, in-progress
+   notes) lives in [`docs/reschedule-remaining-on-backdate.md`](reschedule-remaining-on-backdate.md)
+   — this entry is intentionally just a pointer, kept short so it doesn't
+   duplicate and drift out of sync with that file.**
+   In progress on `feat/reschedule-remaining-on-backdate`; step 1 of 6
+   (`rescheduleTailFrom` in `enrollmentUtils.ts`) partway done.
 
 2. **Shared "selected student" context + nav redesign.** Enrollments has its
    own local student-selector state; Calendar has none (hardcoded fallback

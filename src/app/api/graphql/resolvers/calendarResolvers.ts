@@ -2,7 +2,7 @@ import Enrollment from '@/models/Enrollment';
 import { ICourse } from '@/models/Course';
 import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
-import { generateScheduledDates } from '../lib/enrollmentUtils';
+import { rescheduleTailFrom, canRescheduleRemaining } from '../lib/enrollmentUtils';
 import { DEFAULT_LESSON_CUTOFF_TIME } from '@/utils/constants';
 import { familyNow } from '@/utils/dateUtils';
 
@@ -158,6 +158,7 @@ export const calendarResolvers = {
           day_number?: number;
           total_days?: number;
           status: string;
+          can_reschedule_remaining: boolean;
         }[]
       >();
 
@@ -203,6 +204,7 @@ export const calendarResolvers = {
               day_number: l.day_number,
               total_days: l.total_days,
               status: l.status,
+              can_reschedule_remaining: l.status === 'pending' ? canRescheduleRemaining(enrollment, occurrence.sequence, l.lesson_id.toString()) : false,
             });
           }
         }
@@ -225,13 +227,6 @@ export const calendarResolvers = {
   },
 };
 
-// INVARIANT: a `completed` occurrence's scheduled_dates entry is a historical
-// fact, not a plan — it must never be overwritten by a recompute here (or in
-// updateEnrollment). This function's tail-splice-and-regenerate below only
-// scans for the first overdue occurrence, but currently does NOT re-check
-// the status of anything after it before overwriting — so a later occurrence
-// completed out of sequence order would have its date silently rewritten.
-// Known gap, not yet fixed; keep it in mind before touching this logic.
 async function processOverdueLessons(
   studentId: string,
   cutoffTime: string = DEFAULT_LESSON_CUTOFF_TIME // e.g. "20:00"
@@ -277,30 +272,11 @@ async function processOverdueLessons(
     //    b. If none → continue
     if (firstOverdueIndex === -1) continue; // no overdue lessons, skip this enrollment
 
-    //    c. splice + regenerate + save
-    const lessonsNeedReschedule =
-      enrollment.scheduled_dates.splice(firstOverdueIndex);
-
-    // generate same count of new dates following the enrollment's pattern
-    const startDate = new Date(nowFamilyTz.plus({ days: 1 }).toISODate()!);
-
-    const newDates = generateScheduledDates(
-      startDate,
-      enrollment.weekdays,
-      enrollment.week_interval ?? 1,
-      (enrollment.suspension_periods ?? []).map((p) => ({
-        start: new Date(p.start),
-        end: new Date(p.end),
-      })),
-      lessonsNeedReschedule.length,
-      enrollment.end_date ? new Date(enrollment.end_date) : undefined
-    );
-
-    // append new dates and save
-    const updatedDates = [...enrollment.scheduled_dates, ...newDates];
+    //    c. reschedule the tail + save
+    const updatedDates = rescheduleTailFrom(enrollment, firstOverdueIndex, nowFamilyTz);
     const course = enrollment.course as unknown as ICourse;
     console.log(
-      `[reschedule] enrollment ${enrollment._id} ${course.title}: ${lessonsNeedReschedule.length} lessons rescheduled`
+      `[reschedule] enrollment ${enrollment._id} ${course.title}: ${enrollment.scheduled_dates.length - firstOverdueIndex} lessons rescheduled`
     );
     console.log(
       `[reschedule] new scheduled_dates:`,

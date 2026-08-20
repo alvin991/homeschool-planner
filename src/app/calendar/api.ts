@@ -44,6 +44,7 @@ export const GET_MONTH_VIEW = gql`
           lesson_title
           status
           sequence
+          can_reschedule_remaining
         }
       }
     }

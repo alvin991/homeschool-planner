@@ -58,5 +58,6 @@ export const sharedInputsTypeDefs = `#graphql
     lessonId: ID!
     status: LessonOccurrenceStatus!
     completedDate: String
+    rescheduleRemaining: Boolean
   }
 `;
