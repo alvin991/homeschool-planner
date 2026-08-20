@@ -3,7 +3,7 @@
 Living backlog for the homeschool-planner app. Written to be readable by any AI
 assistant or human picking up the project cold — no prior conversation needed.
 
-Last updated: 2026-08-10
+Last updated: 2026-08-20
 
 ## Context
 
@@ -276,6 +276,26 @@ incorrectly, that `DayCell.tsx` "already did this right.")
       fix but touches the schema and needs a migration; (a) is smaller but
       only codifies the current accident rather than simplifying it.
     - Not yet started.
+
+20. **Consider branch protection on `main` requiring the Test check.**
+    Prompted by realizing `deploy.yml` (manual `workflow_dispatch`, no
+    `needs:`) has zero awareness of `test.yml`'s status — it'll happily
+    build and deploy whatever commit is currently on `main`, test failures
+    or not. Nothing currently prevents a red-checked commit from being
+    deployed; a human just has to remember to look.
+    - **The real tradeoff, not just upside:** GitHub's "require status
+      checks before merging" effectively forces every change onto a PR —
+      direct `git push` to `main` gets blocked outright, since there's no
+      commit for a check to have run against yet at push time. That ends
+      the quick local-merge-and-push pattern used all through this app's
+      history so far (the timezone fix, doc-only `TASKS.md` updates, etc.)
+      — fine for a genuine feature, real friction for a one-line docs fix.
+    - **Setup detail that matters if this gets turned on:** GitHub's
+      "Include administrators" checkbox — without it, protection doesn't
+      apply to the repo owner by default, making the rule decorative
+      rather than actually enforced.
+    - Not yet decided whether the tradeoff is worth it for a 2-user app;
+      revisit if a bad commit ever actually gets deployed for real.
 
 ## Working agreements
 
