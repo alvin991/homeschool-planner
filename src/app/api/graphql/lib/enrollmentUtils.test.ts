@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Types } from 'mongoose';
 import { DateTime } from 'luxon';
-import { canRescheduleRemaining, rescheduleTailFrom } from './enrollmentUtils';
+import { canRescheduleRemaining, rescheduleTailFrom, previousOccurrenceFloor } from './enrollmentUtils';
 
 // Shared fixture calendar used across the rescheduleTailFrom tests below:
 // weekdays = Mon/Wed/Fri, "today" (anchorDate) = Thu 2026-08-20, so
@@ -349,5 +349,85 @@ describe('rescheduleTailFrom', () => {
     // 08-28) is the "off" week under a 2-week interval, so the second
     // fresh date lands on Mon 08-31, not 08-24.
     expect(result).toEqual([d(21), d(31)]);
+  });
+});
+
+describe('previousOccurrenceFloor', () => {
+  it('uses the previous occurrence\'s scheduled slot when it is still pending', () => {
+    const enrollment = {
+      scheduled_dates: [d(17), d(28)],
+      lesson_occurrences: [
+        { sequence: 1, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'A', status: 'pending' as const }] },
+        { sequence: 2, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    expect(previousOccurrenceFloor(enrollment, 2)).toBe('2026-08-17');
+  });
+
+  it('uses the previous occurrence\'s actual completed_date once it is resolved, even if that predates its stale scheduled slot', () => {
+    // This is the reported bug: occurrence 1 was completed early (Aug 21)
+    // against an original slot of Aug 28. rescheduleTailFrom leaves
+    // scheduled_dates[0] frozen at Aug 28 (Gap B fix), so the floor for
+    // occurrence 2 must come from completed_date, not that stale slot -
+    // otherwise occurrence 2 could never be completed before Aug 28, even
+    // on a date after occurrence 1 actually finished.
+    const enrollment = {
+      scheduled_dates: [d(28), d(28)], // occurrence 1's slot never moved; occurrence 2 coincidentally rescheduled to the same day
+      lesson_occurrences: [
+        {
+          sequence: 1,
+          lessons: [
+            { lesson_id: new Types.ObjectId(), lesson_title: 'A1', status: 'completed' as const, completed_date: d(11) },
+            { lesson_id: new Types.ObjectId(), lesson_title: 'A2', status: 'completed' as const, completed_date: d(21) },
+          ],
+        },
+        { sequence: 2, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    expect(previousOccurrenceFloor(enrollment, 2)).toBe('2026-08-21');
+  });
+
+  it('takes the latest completed_date when the previous occurrence has multiple resolved lessons', () => {
+    const enrollment = {
+      scheduled_dates: [d(28), d(28)],
+      lesson_occurrences: [
+        {
+          sequence: 1,
+          lessons: [
+            { lesson_id: new Types.ObjectId(), lesson_title: 'A1', status: 'completed' as const, completed_date: d(21) },
+            { lesson_id: new Types.ObjectId(), lesson_title: 'A2', status: 'completed' as const, completed_date: d(11) },
+          ],
+        },
+        { sequence: 2, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    expect(previousOccurrenceFloor(enrollment, 2)).toBe('2026-08-21');
+  });
+
+  it('falls back to the scheduled slot when the previous occurrence is resolved but skipped (no completed_date)', () => {
+    const enrollment = {
+      scheduled_dates: [d(28), d(28)],
+      lesson_occurrences: [
+        { sequence: 1, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'A', status: 'skipped' as const }] },
+        { sequence: 2, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    expect(previousOccurrenceFloor(enrollment, 2)).toBe('2026-08-28');
+  });
+
+  it('falls back to the scheduled slot when no occurrence matches the previous sequence', () => {
+    const enrollment = {
+      scheduled_dates: [d(17), d(28)],
+      lesson_occurrences: [
+        // sequence 1 missing
+        { sequence: 2, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    expect(previousOccurrenceFloor(enrollment, 2)).toBe('2026-08-17');
   });
 });

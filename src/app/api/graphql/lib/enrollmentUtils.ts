@@ -215,6 +215,42 @@ export function rescheduleTailFrom(enrollment: RescheduleEnrollmentInput, fromIn
   return [...scheduled_dates.slice(0, fromIndex), ...newTail];
 }
 
+type PreviousOccurrenceFloorInput = Pick<IEnrollment, 'lesson_occurrences' | 'scheduled_dates'>;
+
+// The floor a completedDate must not fall before, derived from the
+// immediately preceding occurrence (occurrenceSequence - 1). If that
+// occurrence is still open (has a pending lesson), its scheduled slot is
+// the floor - same as before. But once it's resolved, its scheduled_dates
+// entry is frozen at whatever it was pre-resolution (rescheduleTailFrom
+// deliberately never rewrites a resolved occurrence's slot), so using it
+// as the floor blocks legitimate early completions of the next occurrence.
+// Once resolved, the floor should be the date it actually resolved on -
+// the latest completed_date among its lessons - falling back to the
+// scheduled slot only if none of them carry one (e.g. all skipped).
+export function previousOccurrenceFloor(
+  enrollment: PreviousOccurrenceFloorInput,
+  occurrenceSequence: number
+): string {
+  const prevSequence = occurrenceSequence - 1;
+  const scheduledSlotStr = new Date(enrollment.scheduled_dates[prevSequence - 1])
+    .toISOString()
+    .slice(0, 10);
+
+  const prevOccurrence = enrollment.lesson_occurrences.find((o) => o.sequence === prevSequence);
+  if (!prevOccurrence) return scheduledSlotStr;
+
+  const isResolved = prevOccurrence.lessons.every((l) => l.status !== 'pending');
+  if (!isResolved) return scheduledSlotStr;
+
+  const completedDates = prevOccurrence.lessons
+    .map((l) => l.completed_date)
+    .filter((d): d is Date => d != null);
+  if (completedDates.length === 0) return scheduledSlotStr;
+
+  const latest = completedDates.reduce((max, d) => (d > max ? d : max));
+  return latest.toISOString().slice(0, 10);
+}
+
 type CanRescheduleRemainingInput = Pick<IEnrollment, 'lesson_occurrences'>;
 
 export function canRescheduleRemaining(enrollment: CanRescheduleRemainingInput, occurrenceSequence: number, lessonId: string): boolean {

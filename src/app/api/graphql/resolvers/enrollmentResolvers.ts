@@ -7,6 +7,7 @@ import {
   computeSchedule,
   rescheduleTailFrom,
   canRescheduleRemaining,
+  previousOccurrenceFloor,
 } from '../lib/enrollmentUtils';
 import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
@@ -126,12 +127,10 @@ export const enrollmentResolvers = {
           .slice(0, 10);
 
         if (occurrence.sequence > 1) {
-          const prevSlotStr = new Date(enrollment.scheduled_dates[occurrence.sequence - 2])
-            .toISOString()
-            .slice(0, 10);
-          if (completedDateStr < prevSlotStr) {
+          const prevFloorStr = previousOccurrenceFloor(enrollment, occurrence.sequence);
+          if (completedDateStr < prevFloorStr) {
             throw new Error(
-              `completedDate cannot be before the previous lesson's scheduled date (${prevSlotStr})`
+              `completedDate cannot be before the previous occurrence's date (${prevFloorStr})`
             );
           }
         }
