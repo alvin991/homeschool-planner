@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Types } from 'mongoose';
 import { DateTime } from 'luxon';
-import { canRescheduleRemaining, rescheduleTailFrom, previousOccurrenceFloor } from './enrollmentUtils';
+import { canRescheduleRemaining, rescheduleTailFrom, previousOccurrenceFloor, pendingLessonsForDate } from './enrollmentUtils';
 
 // Shared fixture calendar used across the rescheduleTailFrom tests below:
 // weekdays = Mon/Wed/Fri, "today" (anchorDate) = Thu 2026-08-20, so
@@ -429,5 +429,93 @@ describe('previousOccurrenceFloor', () => {
     };
 
     expect(previousOccurrenceFloor(enrollment, 2)).toBe('2026-08-17');
+  });
+});
+
+describe('pendingLessonsForDate', () => {
+  it('returns the pending lessons for the one occurrence scheduled on that date', () => {
+    const lessonId = new Types.ObjectId();
+    const enrollment = {
+      scheduled_dates: [d(17), d(28)],
+      lesson_occurrences: [
+        { sequence: 1, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'A', status: 'completed' as const, completed_date: d(17) }] },
+        { sequence: 2, lessons: [{ lesson_id: lessonId, lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    const result = pendingLessonsForDate(enrollment, '2026-08-28');
+
+    expect(result).toEqual([{ lesson: enrollment.lesson_occurrences[1].lessons[0], sequence: 2 }]);
+  });
+
+  it('returns an empty array when nothing is scheduled on that date', () => {
+    const enrollment = {
+      scheduled_dates: [d(17)],
+      lesson_occurrences: [
+        { sequence: 1, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'A', status: 'pending' as const }] },
+      ],
+    };
+
+    expect(pendingLessonsForDate(enrollment, '2026-08-28')).toEqual([]);
+  });
+
+  it('collects pending lessons from every occurrence sharing the date, not just the first', () => {
+    // The reported bug: occurrence 1 was completed early, so its slot sits
+    // frozen at its original date (Aug 28). rescheduleTailFrom later
+    // assigned occurrence 2 the same Aug 28 by coincidence. A day view for
+    // Aug 28 must still surface occurrence 2's pending lessons even though
+    // occurrence 1 (fully resolved, nothing pending) matches that date first.
+    const pendingLessonId = new Types.ObjectId();
+    const enrollment = {
+      scheduled_dates: [d(28), d(28)],
+      lesson_occurrences: [
+        {
+          sequence: 1,
+          lessons: [
+            { lesson_id: new Types.ObjectId(), lesson_title: 'A1', status: 'completed' as const, completed_date: d(11) },
+            { lesson_id: new Types.ObjectId(), lesson_title: 'A2', status: 'completed' as const, completed_date: d(21) },
+          ],
+        },
+        {
+          sequence: 2,
+          lessons: [
+            { lesson_id: pendingLessonId, lesson_title: 'B1', status: 'pending' as const },
+          ],
+        },
+      ],
+    };
+
+    const result = pendingLessonsForDate(enrollment, '2026-08-28');
+
+    expect(result).toEqual([{ lesson: enrollment.lesson_occurrences[1].lessons[0], sequence: 2 }]);
+  });
+
+  it('skips a matching date when no occurrence exists for that sequence', () => {
+    const enrollment = {
+      scheduled_dates: [d(17), d(28)],
+      lesson_occurrences: [
+        // sequence 1 missing entirely
+        { sequence: 2, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    expect(pendingLessonsForDate(enrollment, '2026-08-17')).toEqual([]);
+  });
+
+  it('excludes completed and skipped lessons even on a matching date', () => {
+    const enrollment = {
+      scheduled_dates: [d(28)],
+      lesson_occurrences: [
+        {
+          sequence: 1,
+          lessons: [
+            { lesson_id: new Types.ObjectId(), lesson_title: 'A1', status: 'completed' as const, completed_date: d(21) },
+            { lesson_id: new Types.ObjectId(), lesson_title: 'A2', status: 'skipped' as const },
+          ],
+        },
+      ],
+    };
+
+    expect(pendingLessonsForDate(enrollment, '2026-08-28')).toEqual([]);
   });
 });

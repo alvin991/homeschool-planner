@@ -1,5 +1,5 @@
 import { ICourse, ICourseLessonNode } from '@/models/Course';
-import { ILessonSnapshot, ILessonOccurrence, IEnrollment } from '@/models/Enrollment';
+import { ILessonSnapshot, ILessonOccurrence, ILessonOccurrenceLesson, IEnrollment } from '@/models/Enrollment';
 import { DateTime } from 'luxon';
 
 export function flattenLessonTree(
@@ -249,6 +249,38 @@ export function previousOccurrenceFloor(
 
   const latest = completedDates.reduce((max, d) => (d > max ? d : max));
   return latest.toISOString().slice(0, 10);
+}
+
+type PendingLessonsForDateInput = Pick<IEnrollment, 'lesson_occurrences' | 'scheduled_dates'>;
+
+// All pending lessons whose occurrence is scheduled on `date`. Iterates
+// every position rather than stopping at the first match, because more
+// than one occurrence can land on the same scheduled_dates entry - e.g. a
+// resolved occurrence's frozen (pre-backdate) slot coinciding with a later
+// occurrence freshly assigned by rescheduleTailFrom. A `.find()` that stops
+// at the first match would silently drop the later occurrence's lessons
+// whenever that collision happens to put the resolved occurrence first.
+export function pendingLessonsForDate(
+  enrollment: PendingLessonsForDateInput,
+  date: string
+): Array<{ lesson: ILessonOccurrenceLesson; sequence: number }> {
+  const result: Array<{ lesson: ILessonOccurrenceLesson; sequence: number }> = [];
+
+  for (let i = 0; i < enrollment.scheduled_dates.length; i++) {
+    const schedDateStr = new Date(enrollment.scheduled_dates[i]).toISOString().slice(0, 10);
+    if (schedDateStr !== date) continue;
+
+    const occurrence = enrollment.lesson_occurrences.find((o) => o.sequence === i + 1);
+    if (!occurrence) continue;
+
+    for (const lesson of occurrence.lessons) {
+      if (lesson.status === 'pending') {
+        result.push({ lesson, sequence: occurrence.sequence });
+      }
+    }
+  }
+
+  return result;
 }
 
 type CanRescheduleRemainingInput = Pick<IEnrollment, 'lesson_occurrences'>;
