@@ -2,7 +2,7 @@ import Enrollment from '@/models/Enrollment';
 import { ICourse } from '@/models/Course';
 import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
-import { rescheduleTailFrom, canRescheduleRemaining } from '../lib/enrollmentUtils';
+import { rescheduleTailFrom, canRescheduleRemaining, pendingLessonsForDate } from '../lib/enrollmentUtils';
 import { DEFAULT_LESSON_CUTOFF_TIME } from '@/utils/constants';
 import { familyNow } from '@/utils/dateUtils';
 
@@ -49,22 +49,7 @@ export const calendarResolvers = {
       }[] = [];
 
       for (const enrollment of enrollments) {
-        const isScheduledDay = enrollment.scheduled_dates.some(
-          (d) => new Date(d).toISOString().slice(0, 10) === date
-        );
-
-        // the occurrence whose scheduled date is today — its still-pending lessons are "due today"
-        const todaysOccurrence = isScheduledDay
-          ? enrollment.lesson_occurrences.find(
-              (o, idx) =>
-                new Date(enrollment.scheduled_dates[idx])
-                  .toISOString()
-                  .slice(0, 10) === date
-            )
-          : undefined;
-        const pendingToday = (todaysOccurrence?.lessons ?? [])
-          .filter((l) => l.status === 'pending')
-          .map((l) => ({ lesson: l, sequence: todaysOccurrence!.sequence }));
+        const pendingToday = pendingLessonsForDate(enrollment, date);
 
         // any lesson completed today, regardless of which day it was originally scheduled for
         const completedToday = enrollment.lesson_occurrences
