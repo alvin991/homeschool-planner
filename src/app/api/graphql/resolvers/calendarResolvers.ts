@@ -258,7 +258,11 @@ async function processOverdueLessons(
     if (firstOverdueIndex === -1) continue; // no overdue lessons, skip this enrollment
 
     //    c. reschedule the tail + save
-    const updatedDates = rescheduleTailFrom(enrollment, firstOverdueIndex, nowFamilyTz);
+    // Today itself is still a valid slot for the fresh tail as long as we're
+    // not past cutoff yet — nothing has happened today, unlike the backdate-
+    // completion call site where "today" is already spoken for by the lesson
+    // that was just completed.
+    const updatedDates = rescheduleTailFrom(enrollment, firstOverdueIndex, nowFamilyTz, !pastCutoff);
     const course = enrollment.course as unknown as ICourse;
     console.log(
       `[reschedule] enrollment ${enrollment._id} ${course.title}: ${enrollment.scheduled_dates.length - firstOverdueIndex} lessons rescheduled`
