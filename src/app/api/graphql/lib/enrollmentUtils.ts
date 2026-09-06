@@ -156,7 +156,12 @@ type RescheduleEnrollmentInput = Pick<
   'scheduled_dates' | 'lesson_occurrences' | 'weekdays' | 'week_interval' | 'suspension_periods' | 'end_date'
 >;
 
-export function rescheduleTailFrom(enrollment: RescheduleEnrollmentInput, fromIndex: number, anchorDate: DateTime): Date[] {
+export function rescheduleTailFrom(
+  enrollment: RescheduleEnrollmentInput,
+  fromIndex: number,
+  anchorDate: DateTime,
+  allowToday: boolean = false
+): Date[] {
   const { scheduled_dates, lesson_occurrences, weekdays, week_interval, suspension_periods, end_date } = enrollment;
 
   if (lesson_occurrences.length !== scheduled_dates.length) {
@@ -184,8 +189,8 @@ export function rescheduleTailFrom(enrollment: RescheduleEnrollmentInput, fromIn
 
   const pendingCount = tailOccurrences.filter(isPending).length;
 
-  //Call generateScheduledDates(startDate, ..., pendingCount, ...) where startDate is the day after anchorDate — asking for exactly pendingCount fresh dates, nothing about the old tail involved.
-  const { year, month, day } = anchorDate.plus({ days: 1 });
+  //Call generateScheduledDates(startDate, ..., pendingCount, ...) where startDate is the earliest day the fresh tail may land on — the anchor date itself when the caller says it's still available (allowToday), otherwise the day after.
+  const { year, month, day } = allowToday ? anchorDate : anchorDate.plus({ days: 1 });
   const startDate = new Date(year, month - 1, day);
   const newTailDates = generateScheduledDates(
     startDate,

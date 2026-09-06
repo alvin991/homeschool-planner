@@ -350,6 +350,45 @@ describe('rescheduleTailFrom', () => {
     // fresh date lands on Mon 08-31, not 08-24.
     expect(result).toEqual([d(21), d(31)]);
   });
+
+  it('starts the fresh tail on the anchor date itself when allowToday is true', () => {
+    // Every day is a scheduled day here, and the anchor (Wed 08-19) is
+    // itself a valid one - the overdue-sweep call site passes allowToday:
+    // true when it's still before cutoff, meaning today hasn't been used
+    // by anything yet and is fair game for the regenerated tail.
+    const enrollment = {
+      ...baseEnrollment,
+      weekdays: [0, 1, 2, 3, 4, 5, 6],
+      scheduled_dates: [d(17), d(18)],
+      lesson_occurrences: [
+        { sequence: 1, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'A', status: 'pending' as const }] },
+        { sequence: 2, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    const WED = DateTime.fromObject({ year: 2026, month: 8, day: 19 });
+    const result = rescheduleTailFrom(enrollment, 0, WED, true);
+
+    expect(result).toEqual([d(19), d(20)]);
+  });
+
+  it('still skips the anchor date when allowToday is true but the anchor itself is not a scheduled weekday', () => {
+    // weekdays here is Mon/Wed/Fri and the anchor is Thu - allowToday only
+    // lowers the search's starting point, it doesn't force an otherwise
+    // invalid day into the schedule.
+    const enrollment = {
+      ...baseEnrollment,
+      scheduled_dates: [d(17), d(19)],
+      lesson_occurrences: [
+        { sequence: 1, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'A', status: 'pending' as const }] },
+        { sequence: 2, lessons: [{ lesson_id: new Types.ObjectId(), lesson_title: 'B', status: 'pending' as const }] },
+      ],
+    };
+
+    const result = rescheduleTailFrom(enrollment, 0, TODAY, true);
+
+    expect(result).toEqual([d(21), d(24)]);
+  });
 });
 
 describe('previousOccurrenceFloor', () => {
