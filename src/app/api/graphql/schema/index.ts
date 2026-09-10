@@ -5,6 +5,7 @@ import { typeDefs } from './typedefs';
 import { enrollmentResolvers } from '../resolvers/enrollmentResolvers';
 import { studentResolvers } from '../resolvers/studentResolvers';
 import { calendarResolvers } from '../resolvers/calendarResolvers';
+import { calendarEventResolvers } from '../resolvers/calendarEventResolvers';
 
 export { typeDefs };
 
@@ -13,5 +14,6 @@ export const resolvers = mergeGraphQLResolvers(
   resourceResolvers,
   studentResolvers,
   enrollmentResolvers,
-  calendarResolvers
+  calendarResolvers,
+  calendarEventResolvers
 );
