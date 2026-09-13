@@ -66,6 +66,12 @@ export default function NavigationMenu() {
           >
             Students
           </Link>
+          <Link
+            href="/resources/calendar-events"
+            className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            Calendar Events
+          </Link>
         </div>
       </details>
       <button
