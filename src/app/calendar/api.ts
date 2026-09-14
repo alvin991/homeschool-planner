@@ -50,3 +50,15 @@ export const GET_MONTH_VIEW = gql`
     }
   }
 `;
+
+export const GET_CALENDAR_EVENTS = gql`
+  query GetCalendarEvents($studentId: ID, $month: String) {
+    calendarEvents(studentId: $studentId, month: $month) {
+      _id
+      title
+      start_date
+      end_date
+      student
+    }
+  }
+`;

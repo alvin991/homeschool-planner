@@ -49,3 +49,15 @@ export type MonthViewData = {
 export type GetCalendarMonthViewData = {
   calendarMonthView: MonthViewData;
 };
+
+export type CalendarEvent = {
+  _id: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  student: string | null;
+};
+
+export type GetCalendarEventsData = {
+  calendarEvents: CalendarEvent[];
+};
