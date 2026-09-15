@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { CalendarIcon } from '@heroicons/react/24/outline';
 import { CalendarEvent, MonthViewLesson } from '../types';
 import { useMutation } from '@apollo/client/react';
 import { UPDATE_OCCURRENCE_STATUS } from '../api';
@@ -230,12 +231,9 @@ export default function DayCell({
           {events.map((event) => (
             <div
               key={event._id}
-              className="flex rounded-md border border-dashed overflow-hidden px-2 text-nowrap"
-              style={{
-                backgroundColor: '#f0f9ff',
-                color: '#0369a1',
-              }}
+              className="flex items-center gap-1 h-6 rounded-md overflow-hidden px-2 text-nowrap text-xs font-bold text-black"
             >
+              <CalendarIcon className="w-4 h-4 shrink-0" />
               <span>{event.title}</span>
             </div>
           ))}
