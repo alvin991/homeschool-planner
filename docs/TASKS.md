@@ -50,10 +50,15 @@ ones.
 explicit requests and daily-use pain points first, dev-only/infra items last)
 
 1. **Custom calendar events (e.g. stat holidays, "Annabelle ballet class") —
-   design locked 2026-09-06, not started.** Wife's request — current top
-   priority. Pick a single date or date range, give it a name, see it show
-   up on the calendar alongside lesson occurrences, purely as a visual
-   annotation (no interaction with lesson scheduling/auto-reschedule).
+   in progress, schema/api/page/calendar-display done, Preview on hold.**
+   Wife's request — current top priority. Pick a single date or date range,
+   give it a name, see it show up on the calendar alongside lesson
+   occurrences, purely as a visual annotation (no interaction with lesson
+   scheduling/auto-reschedule). **Preview step deferred** (decided
+   2026-09-16) — the events form ships without it for now; an event's dates
+   are exactly what's typed in (no generated schedule to double-check
+   against, unlike enrollments), so the payoff is smaller and it can be
+   added later with zero rework. See "Phase 5" in the design doc.
    Full design, decisions, and a file-and-line-level implementation roadmap:
    [`docs/custom-calendar-events.md`](custom-calendar-events.md). Locked:
    new standalone `CalendarEvent` model (dates as plain `"YYYY-MM-DD"`

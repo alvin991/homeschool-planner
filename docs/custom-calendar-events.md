@@ -474,13 +474,17 @@ on the calendar"):
    added to the live calendar.
 10. `DayView.tsx` — fetch + render the day's events banner, also display-only.
 
-**Phase 5 — preview** (last, since it depends on Phase 4's `events`
-rendering already existing — otherwise there's nothing for the modal to
-show underneath the draft event):
+**Phase 5 — preview — on hold, decided 2026-09-16.** Deferred rather than
+shipped in v1: the events form (Phase 3) ships without a Preview button.
+Reasoning: unlike the enrollment case, an event's dates are exactly what's
+typed into the form — there's no generated schedule that could surprise
+you, so the value Preview adds here (catching a mistake before saving) is
+smaller than it was for enrollments. Can still be picked up later without
+any rework — nothing in Phases 1-4 depends on it existing.
 11. `src/app/enrollments/components/PreviewCalendar.tsx` →
     `src/app/resources/events/components/EventPreviewCalendar.tsx` — new
     component, same modal shell, merges the draft event into live
     `calendarMonthView`/`calendarEvents` data client-side (no new query).
     Wire the Preview button into the Phase 3 page's form.
 
-Not started.
+Phases 1-4: done. Phase 5: on hold (see above).
