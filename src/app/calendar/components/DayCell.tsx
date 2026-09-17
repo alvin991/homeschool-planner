@@ -231,7 +231,7 @@ export default function DayCell({
           {events.map((event) => (
             <div
               key={event._id}
-              className="flex items-center gap-1 h-6 rounded-md overflow-hidden px-2 text-nowrap text-xs font-bold text-black"
+              className="flex items-center gap-1 rounded-md overflow-hidden px-2 text-nowrap text-xs font-bold text-black"
             >
               <CalendarIcon className="w-4 h-4 shrink-0" />
               <span>{event.title}</span>
