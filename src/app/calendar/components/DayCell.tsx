@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { MonthViewLesson } from '../types';
+import { CalendarIcon } from '@heroicons/react/24/outline';
+import { CalendarEvent, MonthViewLesson } from '../types';
 import { useMutation } from '@apollo/client/react';
 import { UPDATE_OCCURRENCE_STATUS } from '../api';
 import apolloClient from '@/utils/apolloClient';
@@ -24,6 +25,7 @@ export default function DayCell({
   dayNumber,
   isValid,
   lessons,
+  events,
   isToday,
   column,
   date,
@@ -31,6 +33,7 @@ export default function DayCell({
   dayNumber: number;
   isValid: boolean;
   lessons: MonthViewLesson[];
+  events: CalendarEvent[];
   isToday: boolean;
   column: number;
   date: string;
@@ -60,7 +63,7 @@ export default function DayCell({
     checkOverflow();
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
-  }, [lessons]);
+  }, [lessons, events]);
 
   useEffect(() => {
     if (!popoverLesson) return;
@@ -224,7 +227,18 @@ export default function DayCell({
         className="mt-6 h-[calc(100%-1.5rem)] overflow-auto pr-1"
         onScroll={() => setPopoverLesson(null)}
       >
-        <div className="space-y-0">
+        <div className="space-y-1 mb-1">
+          {events.map((event) => (
+            <div
+              key={event._id}
+              className="flex items-center gap-1 rounded-md overflow-hidden px-2 text-nowrap text-xs font-bold text-black"
+            >
+              <CalendarIcon className="w-4 h-4 shrink-0" />
+              <span>{event.title}</span>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-1">
           {lessons.map((lesson, idx) => (
             <div
               key={idx}

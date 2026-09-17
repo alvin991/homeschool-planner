@@ -1,8 +1,8 @@
 'use client';
 import apolloClient from '@/utils/apolloClient';
 import { useQuery } from '@apollo/client/react';
-import { GET_MONTH_VIEW } from '../api';
-import { GetCalendarMonthViewData } from '../types';
+import { GET_MONTH_VIEW, GET_CALENDAR_EVENTS } from '../api';
+import { GetCalendarEventsData, GetCalendarMonthViewData } from '../types';
 import CalendarGrid from './CalendarGrid';
 import MonthTopBar from './MonthTopBar';
 import { useState } from 'react';
@@ -13,15 +13,29 @@ type MonthViewProps = {
   month: string;
 };
 
-export default function MonthView({ studentId, month: initialMonth }: MonthViewProps) {
+export default function MonthView({
+  studentId,
+  month: initialMonth,
+}: MonthViewProps) {
   const [month, setMonth] = useState(initialMonth);
+  const { data: eventsData } = useQuery<GetCalendarEventsData>(
+    GET_CALENDAR_EVENTS,
+    {
+      client: apolloClient,
+      variables: { studentId, month },
+      skip: !studentId || !month,
+      fetchPolicy: 'cache-and-network',
+    }
+  );
+  const events = eventsData?.calendarEvents ?? [];
+
   const { data, loading, error } = useQuery<GetCalendarMonthViewData>(
     GET_MONTH_VIEW,
     {
       client: apolloClient,
       variables: { studentId, month },
       skip: !studentId || !month,
-      fetchPolicy: 'cache-and-network'
+      fetchPolicy: 'cache-and-network',
     }
   );
   if (loading)
@@ -36,7 +50,7 @@ export default function MonthView({ studentId, month: initialMonth }: MonthViewP
         <p className="text-red-500">Error: {error.message}</p>
       </div>
     );
-  
+
   // TODO: midnight-rollover — add a timer that updates `today` at local midnight
   const today = familyTodayAsDate();
   const days = data?.calendarMonthView.days ?? [];
@@ -44,7 +58,7 @@ export default function MonthView({ studentId, month: initialMonth }: MonthViewP
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <MonthTopBar month={month} onMonthChange={setMonth} today={today} />
-      <CalendarGrid days={days} today={today} month={month} />
+      <CalendarGrid days={days} today={today} month={month} events={events} />
     </div>
   );
 }

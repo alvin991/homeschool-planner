@@ -4,7 +4,7 @@ import { ISubject } from '@/models/Subject';
 import Student from '@/models/Student';
 import { rescheduleTailFrom, canRescheduleRemaining, pendingLessonsForDate } from '../lib/enrollmentUtils';
 import { DEFAULT_LESSON_CUTOFF_TIME } from '@/utils/constants';
-import { familyNow } from '@/utils/dateUtils';
+import { familyNow, monthToDateRange } from '@/utils/dateUtils';
 
 type IPopulatedCourse = Omit<ICourse, 'subject'> & { subject: ISubject };
 
@@ -101,10 +101,7 @@ export const calendarResolvers = {
       { studentId, month }: { studentId: string; month: string }
     ) => {
       // 1. Parse month ("2026-06") into startDate / endDate strings
-      const [year, monthNum] = month.split('-').map(Number);
-      const startDate = `${month}-01`;
-      const lastDay = new Date(year, monthNum, 0).getDate();
-      const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+      const { startDate, endDate } = monthToDateRange(month);
 
       // 2. Fetch student name
       const student = await Student.findById(studentId).lean();

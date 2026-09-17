@@ -12,6 +12,18 @@ export function shiftMonth(month: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/**
+ * monthToDateRange("2026-09") → { startDate: "2026-09-01", endDate: "2026-09-30" }
+ * @param month - "YYYY-MM" format, e.g. "2026-09"
+ */
+export function monthToDateRange(month: string): { startDate: string; endDate: string } {
+  const [year, monthNum] = month.split('-').map(Number);
+  const startDate = `${month}-01`;
+  const lastDay = new Date(year, monthNum, 0).getDate();
+  const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+  return { startDate, endDate };
+}
+
 export function familyNow(): DateTime {
   return DateTime.now().setZone(FAMILY_TIMEZONE);
 }

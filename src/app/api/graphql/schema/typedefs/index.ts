@@ -14,6 +14,9 @@ import { queryStudentTypeDefs } from './query.student.typedefs';
 import { mutationStudentTypeDefs } from './mutation.student.typedefs';
 import { calendarTypeDefs } from './calendar.typedefs';
 import { queryCalendarTypeDefs } from './query.calendar.typedefs';
+import { calendarEventTypeDefs } from './calendarEvent.typedefs';
+import { queryCalendarEventTypeDefs } from './query.calendarEvent.typedefs';
+import { mutationCalendarEventTypeDefs } from './mutation.calendarEvent.typedefs';
 
 /** Order matters: types before roots; `extend` after base `type Query` / `type Mutation`. */
 export const typeDefs = [
@@ -24,13 +27,16 @@ export const typeDefs = [
   studentTypeDefs,
   enrollmentTypeDefs,
   calendarTypeDefs,
+  calendarEventTypeDefs,
   queryCourseTypeDefs,
   queryResourceTypeDefs,
   queryStudentTypeDefs,
   queryEnrollmentTypeDefs,
   queryCalendarTypeDefs,
+  queryCalendarEventTypeDefs,
   mutationCourseTypeDefs,
   mutationResourceTypeDefs,
   mutationStudentTypeDefs,
   mutationEnrollmentTypeDefs,
+  mutationCalendarEventTypeDefs,
 ].join('\n');

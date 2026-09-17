@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@apollo/client/react';
-import { GET_DAY_VIEW, UPDATE_OCCURRENCE_STATUS } from '../api';
+import { GET_DAY_VIEW, UPDATE_OCCURRENCE_STATUS, GET_CALENDAR_EVENTS } from '../api';
 import apolloClient from '@/utils/apolloClient';
-import type { GetCalendarDayViewData, DayViewLesson } from '../types';
-import { ChevronRightIcon } from '@heroicons/react/24/outline';
+import type { GetCalendarDayViewData, DayViewLesson, GetCalendarEventsData } from '../types';
+import { ChevronRightIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { Nunito } from 'next/font/google';
 import { familyToday } from '@/utils/dateUtils';
 
@@ -32,6 +32,21 @@ export default function DayView({ studentId, date = familyToday() }: DayViewProp
     client: apolloClient,
     refetchQueries: [{ query: GET_DAY_VIEW, variables: { studentId, date } }],
   });
+
+  const month = date.slice(0, 7);
+  const { data: eventsData } = useQuery<GetCalendarEventsData>(
+    GET_CALENDAR_EVENTS,
+    {
+      client: apolloClient,
+      variables: { studentId, month },
+      skip: !studentId || !month,
+      fetchPolicy: 'cache-and-network',
+    }
+  );
+  const events = (eventsData?.calendarEvents ?? []).filter(
+    (e) => e.start_date <= date && e.end_date >= date
+  );
+
   const { data, loading, error } = useQuery<GetCalendarDayViewData>(
     GET_DAY_VIEW,
     {
@@ -107,6 +122,19 @@ export default function DayView({ studentId, date = familyToday() }: DayViewProp
       </div>
       <div className="flex-1 overflow-y-auto flex justify-center">
         <div className="w-1/3 py-4">
+          {events.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {events.map((event) => (
+                <div
+                  key={event._id}
+                  className="flex items-center gap-2 text-black font-bold"
+                >
+                  <CalendarIcon className="w-5 h-5 shrink-0" />
+                  <span>{event.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {lessons.map((lesson) => (
             <div
               key={`${lesson.lesson_id}`}

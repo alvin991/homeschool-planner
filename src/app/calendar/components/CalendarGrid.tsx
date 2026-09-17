@@ -1,15 +1,16 @@
 'use client';
 
 import DayCell from './DayCell';
-import { MonthViewDay } from '../types';
+import { CalendarEvent, MonthViewDay } from '../types';
 
 type CalendarGridProps = {
   days: MonthViewDay[];
   today: Date;
   month: string;
+  events?: CalendarEvent[];
 };
 
-export default function CalendarGrid({ days, today, month }: CalendarGridProps) {
+export default function CalendarGrid({ days, today, month, events = [] }: CalendarGridProps) {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const weekdaysHeader = daysOfWeek.map((day) => (
@@ -37,9 +38,11 @@ export default function CalendarGrid({ days, today, month }: CalendarGridProps) 
     const dayNumber = i - firstDayOfMonth + 1;
     const isValid = dayNumber > 0 && dayNumber <= numOfDaysInMonth;
     const lessons = isValid ? (lessonsByDay.get(dayNumber) ?? []) : [];
-
     const isToday = isValid && isCurrentMonth && dayNumber === todayDay;
     const date = `${month}-${String(dayNumber).padStart(2, '0')}`;
+    const dayEvents = isValid
+      ? events.filter((e) => e.start_date <= date && e.end_date >= date)
+      : [];
 
     return (
       <DayCell
@@ -47,6 +50,7 @@ export default function CalendarGrid({ days, today, month }: CalendarGridProps) 
         dayNumber={dayNumber}
         isValid={isValid}
         lessons={lessons}
+        events={dayEvents}
         isToday={isToday}
         column={i % 7}
         date={date}
