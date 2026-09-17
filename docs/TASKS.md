@@ -312,6 +312,20 @@ explicit requests and daily-use pain points first, dev-only/infra items last)
     push directly to `main` despite the rule being on. Pure process item —
     no direct user-visible effect.
 
+23. **Take the app public — GCP Cloud Run + `homeschool.amaska.ca`.** Wife's
+    request, so she (and eventually their daughter) can reach it outside the
+    house. Decided 2026-09-17: Cloud Run (deliberate GCP-practice choice,
+    ties to the maintainer's day job) + MongoDB Atlas free tier, replacing
+    the current self-hosted-runner deploy path. No per-user login — data
+    isn't sensitive — just a single shared password gate to stop accidental
+    data-messing, plus login-attempt throttling (no general API rate
+    limiting for v1; app is same-origin so CORS needs no change). Domain
+    `amaska.ca` already owned; custom domain mapping to Cloud Run is free.
+    Full design, decisions, and phased roadmap:
+    [`docs/public-deploy.md`](public-deploy.md). Design-partner mode:
+    project owner implements (wants the hands-on GCP learning), reviewed as
+    he goes.
+
 ## Working agreements
 
 **Data migration safety checklist** — apply to any migration script, dev or
