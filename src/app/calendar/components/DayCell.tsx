@@ -156,6 +156,7 @@ export default function DayCell({
         <button
           type="button"
           onClick={() => {
+            if (isAddingEvent) return;
             setPopoverLesson(null);
             eventForm.setTitle('');
             eventForm.setStartDate(date);
