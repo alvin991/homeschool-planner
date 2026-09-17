@@ -8,9 +8,10 @@ type CalendarGridProps = {
   today: Date;
   month: string;
   events?: CalendarEvent[];
+  studentId?: string;
 };
 
-export default function CalendarGrid({ days, today, month, events = [] }: CalendarGridProps) {
+export default function CalendarGrid({ days, today, month, events = [], studentId }: CalendarGridProps) {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const weekdaysHeader = daysOfWeek.map((day) => (
@@ -54,6 +55,7 @@ export default function CalendarGrid({ days, today, month, events = [] }: Calend
         isToday={isToday}
         column={i % 7}
         date={date}
+        studentId={studentId}
       />
     );
   });
