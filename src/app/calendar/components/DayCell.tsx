@@ -31,6 +31,7 @@ export default function DayCell({
   events,
   isToday,
   column,
+  row,
   date,
   studentId,
 }: {
@@ -40,6 +41,7 @@ export default function DayCell({
   events: CalendarEvent[];
   isToday: boolean;
   column: number;
+  row?: number;
   date: string;
   studentId?: string;
 }) {
@@ -52,6 +54,9 @@ export default function DayCell({
   const popoverPosition = column === 6 ? 'right-full' : 'left-full';
   // Wider than the lesson popover (w-80 vs w-64), so it needs to flip one column earlier.
   const addEventPopoverPosition = column >= 5 ? 'right-full' : 'left-full';
+  // Tall enough that anchoring to the cell's bottom (extending upward) overflows
+  // above the viewport/nav bar on the first row, which has no room above it.
+  const addEventPopoverIsTopRow = row === 0;
   const [popoverTop, setPopoverTop] = useState(0);
   const cellRef = useRef<HTMLDivElement>(null);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -174,18 +179,18 @@ export default function DayCell({
       {isAddingEvent && (
         <div
           ref={addEventPopoverRef}
-          className={`absolute ${addEventPopoverPosition} bottom-2 z-50 bg-white rounded-lg shadow-lg border p-4 w-80`}
+          className={`absolute ${addEventPopoverPosition} ${addEventPopoverIsTopRow ? 'top-2' : 'bottom-2'} z-50 bg-white rounded-lg shadow-lg border p-4 w-80`}
         >
           {/* Outer triangle (border color) */}
           <div
-            className={`absolute ${column >= 5 ? '-right-[10px]' : '-left-[10px]'} bottom-3 w-0 h-0
+            className={`absolute ${column >= 5 ? '-right-[10px]' : '-left-[10px]'} ${addEventPopoverIsTopRow ? 'top-3' : 'bottom-3'} w-0 h-0
             border-t-[9px] border-t-transparent
             border-b-[9px] border-b-transparent
             ${column >= 5 ? 'border-l-[9px] border-l-black' : 'border-r-[9px] border-r-black'}`}
           />
           {/* Inner triangle (white fill) */}
           <div
-            className={`absolute ${column >= 5 ? '-right-2' : '-left-2'} bottom-3 w-0 h-0
+            className={`absolute ${column >= 5 ? '-right-2' : '-left-2'} ${addEventPopoverIsTopRow ? 'top-3' : 'bottom-3'} w-0 h-0
             border-t-8 border-t-transparent
             border-b-8 border-b-transparent
             ${column >= 5 ? 'border-l-8 border-l-white' : 'border-r-8 border-r-white'}`}
