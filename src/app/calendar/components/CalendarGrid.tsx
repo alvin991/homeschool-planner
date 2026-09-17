@@ -54,6 +54,7 @@ export default function CalendarGrid({ days, today, month, events = [], studentI
         events={dayEvents}
         isToday={isToday}
         column={i % 7}
+        row={Math.floor(i / 7)}
         date={date}
         studentId={studentId}
       />
