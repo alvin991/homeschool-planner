@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { useEventForm } from './useEventForm';
 
 type FormFields = ReturnType<typeof useEventForm>;
@@ -43,17 +44,19 @@ export default function EventFormFields({
   handleDelete,
   deleting,
 }: EventFormFieldsProps) {
+  const id = useId();
+
   return (
     <div className="space-y-4">
       <div>
         <label
-          htmlFor="calendar-event-title"
+          htmlFor={`${id}-title`}
           className="mb-1 block text-sm font-medium text-gray-700"
         >
           Name
         </label>
         <input
-          id="calendar-event-title"
+          id={`${id}-title`}
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -63,13 +66,13 @@ export default function EventFormFields({
       </div>
       <div>
         <label
-          htmlFor="start-date"
+          htmlFor={`${id}-start-date`}
           className="mb-1 block text-sm font-medium text-gray-700"
         >
           Start Date
         </label>
         <input
-          id="start-date"
+          id={`${id}-start-date`}
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
@@ -79,13 +82,13 @@ export default function EventFormFields({
       </div>
       <div>
         <label
-          htmlFor="end-date"
+          htmlFor={`${id}-end-date`}
           className="mb-1 block text-sm font-medium text-gray-700"
         >
           End Date
         </label>
         <input
-          id="end-date"
+          id={`${id}-end-date`}
           type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
@@ -95,13 +98,13 @@ export default function EventFormFields({
       </div>
       <div>
         <label
-          htmlFor="student"
+          htmlFor={`${id}-student`}
           className="mb-1 block text-sm font-medium text-gray-700"
         >
           Student
         </label>
         <select
-          id="student"
+          id={`${id}-student`}
           value={studentId ?? ''}
           onChange={(e) => setStudentId(e.target.value || null)}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
