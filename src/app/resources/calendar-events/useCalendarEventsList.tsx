@@ -44,7 +44,11 @@ export function useCalendarEventsList({
     setIsCreating(false);
     setSelectedId(id);
     const row = calendarEvents.find((e) => e._id === id);
-    if (row) onLoadRow(row);
+    if (row) {
+      onLoadRow(row);
+    } else {
+      onReset();
+    }
   };
 
   const handleDelete = async () => {
