@@ -205,7 +205,10 @@ export default function DayCell({
             creating={creatingEvent}
             updating={false}
             isCreating={true}
-            handleCancelCreate={() => setIsAddingEvent(false)}
+            handleCancelCreate={() => {
+              setIsAddingEvent(false);
+              eventForm.resetForm();
+            }}
             handleDelete={() => {}}
             deleting={false}
           />
