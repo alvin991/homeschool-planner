@@ -510,10 +510,15 @@ icon directly on the day cell that opens a small popup form.
   this click on empty space, a lesson pill, or an event pill" the way the
   original (rejected) click-anywhere-to-add design would have.
 - **Simplified popup, not the full form:** title input, start date, end
-  date (both default to the clicked cell's `date`, with the same
-  auto-fill-End-until-touched nicety as the Resources form), and a
-  student-scope `<select>` — kept, since it's small, but defaulting to the
-  calendar's currently-viewed student rather than "Everyone."
+  date (both default to the clicked cell's `date`), and a student-scope
+  `<select>` — kept, since it's small, but defaulting to the calendar's
+  currently-viewed student rather than "Everyone." **Correction
+  (2026-09):** an earlier version of this doc claimed the popup reuses an
+  "auto-fill-End-until-touched" nicety from the Resources form — that
+  never actually got built on either form; both start/end dates are
+  plain, independent fields today. If it's still wanted, it'd need
+  implementing in `useEventForm`/`EventFormFields` (shared by both), not
+  assumed as already-existing behavior.
 - **UI: bottom-right corner, hover-only — confirmed 2026-09-17** (mockup
   reviewed and picked over pairing it next to the day-number badge).
   `absolute right-2 bottom-2`, ~26px circular button matching the
