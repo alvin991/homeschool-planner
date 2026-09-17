@@ -488,3 +488,127 @@ any rework — nothing in Phases 1-4 depends on it existing.
     Wire the Preview button into the Phase 3 page's form.
 
 Phases 1-4: done. Phase 5: on hold (see above).
+
+## Addendum: quick-add button on the calendar (added 2026-09-17)
+
+Real usage feedback from the wife, after trying the shipped v1: adding an
+event only via `/resources/calendar-events` is one extra hop away from
+where she's actually looking (the calendar itself) — she wants a button/
+icon directly on the day cell that opens a small popup form.
+
+**Decisions locked (confirmed 2026-09-17):**
+- **Alongside the Resources page, not replacing it.** The calendar gets a
+  quick "add event" shortcut for convenience; `/resources/calendar-events`
+  stays as the full management page (bulk view, edit, delete, scope
+  dropdown) — same reasoning as the original v1 decision to build that page
+  at all: bulk entry (a whole school year of stat holidays) is still
+  painful from individual day cells.
+- **Add only — no edit/delete from the calendar.** Clicking an existing
+  event pill does nothing new; editing/deleting an event still only
+  happens on the Resources page. Keeps this addition small: a dedicated
+  button only ever needs a "create" flow, never has to disambiguate "is
+  this click on empty space, a lesson pill, or an event pill" the way the
+  original (rejected) click-anywhere-to-add design would have.
+- **Simplified popup, not the full form:** title input, start date, end
+  date (both default to the clicked cell's `date`, with the same
+  auto-fill-End-until-touched nicety as the Resources form), and a
+  student-scope `<select>` — kept, since it's small, but defaulting to the
+  calendar's currently-viewed student rather than "Everyone."
+- **UI: bottom-right corner, hover-only — confirmed 2026-09-17** (mockup
+  reviewed and picked over pairing it next to the day-number badge).
+  `absolute right-2 bottom-2`, ~26px circular button matching the
+  day-number badge's style (`bg-slate-100`/`text-slate-700`, no border),
+  centered "+" icon, `opacity-0` → `opacity-100` on cell hover (needs
+  `group`/`group-hover` on the cell's root div). Chosen because it claims
+  genuinely unused space rather than competing with either existing corner
+  badge — it'll occasionally sit over the last visible pill on a packed
+  day, which is an accepted, deliberate trade-off (same pattern most
+  calendar apps use), not an oversight.
+- **No calendar-based Preview in this popup — decided 2026-09-17, not just
+  deferred.** Unlike the Resources-page form (where Preview's whole point
+  is "you can't see the calendar from here, so we show you a temporary
+  one"), this popup is triggered *from* the live calendar — the real thing
+  is already visible right behind it. A second, separate preview calendar
+  showing the same event would be redundant, not just extra work to skip.
+  If a mistake is made (wrong date, typo'd title), the fix is a quick trip
+  to `/resources/calendar-events` — acceptable friction since it's a rare
+  correction, not a routine step, and that page's own Preview stays on
+  hold too (Phase 5, unchanged). After Save, the real calendar behind the
+  popup already refreshes immediately via the mutation's `refetchQueries`
+  (see roadmap step 3 below), so the "did it land where I meant" question
+  is answered a second later anyway, just without a modal for it.
+
+**Implementation roadmap (sequenced — later steps depend on earlier ones):**
+
+1. **Extract the form into its own component.** New file, e.g.
+   `src/app/resources/calendar-events/components/EventForm.tsx`. Pull
+   everything currently inline in `calendar-events/page.tsx`'s `detail`
+   (lines ~153-250: title/start/end/student inputs, Save/Cancel/Delete
+   buttons, `formError` display) into a component taking props like
+   `{ title, startDate, endDate, studentId, onTitleChange, onStartDateChange,
+   onEndDateChange, onStudentIdChange, onSave, onCancel, isSaving,
+   showDelete, onDelete, isDeleting, formError }`. `page.tsx` keeps all its
+   existing state/handlers untouched — it just renders `<EventForm ... />`
+   instead of the inline JSX. This is the foundational step: nothing else
+   below can start until the form exists as something the popup can also
+   render. `showDelete={false}` is what makes the popup's add-only
+   constraint (locked above) simple — the popup just never passes a
+   Delete handler, `EventForm` only renders that button when `showDelete`
+   is true.
+2. **Icon + hover effect on `DayCell.tsx`.** Independent of step 1, can be
+   done in parallel: the bottom-right circular button (placement locked
+   above) plus a local `isAddingEvent` boolean toggled on click. No real
+   save logic wired yet at this point.
+3. **Popup component rendering the extracted form.** New file (or inline
+   in `DayCell.tsx`, matching how the lesson popover is already inline
+   there — a judgment call while building). Renders `<EventForm />` from
+   step 1 inside a popover reusing the file's existing triangle-pointer +
+   `popoverTop` positioning technique (not new positioning). Pre-fills
+   start/end to this cell's `date`. Needs the plumbing noted below
+   (`studentId`, the mutation, refetch) wired into its `onSave`.
+4. **Cancel/close wiring** — falls out of step 1 rather than being
+   separate: `EventForm`'s `onCancel` prop already exists (it's what the
+   Resources page's Cancel button already calls). The popup just passes
+   its own `onCancel = () => setIsAddingEvent(false)` (plus resetting the
+   local form state) — no second button needed, same prop, different
+   callback per caller.
+
+**Plumbing needed for step 3:**
+- `DayCell.tsx` doesn't currently receive `studentId` — only `dayNumber`,
+  `lessons`, `events`, `isToday`, `column`, `date`. Needs `studentId`
+  threaded down from `MonthView.tsx` → `CalendarGrid.tsx` → `DayCell.tsx`
+  (`month` can be derived from the cell's own `date` via
+  `date.slice(0, 7)`), both to default the scope dropdown and to build the
+  mutation's `refetchQueries` correctly.
+- `CREATE_CALENDAR_EVENT` already exists in
+  `src/app/resources/api/calendarEvents.graphql.ts` — the popup imports it
+  directly from there rather than duplicating it into `calendar/api.ts`.
+  **Correction (2026-09):** an earlier version of this doc said to
+  duplicate it, reasoning that `calendar/` and `resources/` should stay
+  decoupled the same way `GET_CALENDAR_EVENTS`/`GET_ALL_CALENDAR_EVENTS`
+  are. That reasoning doesn't actually hold here — unlike those two
+  queries (genuinely different argument shapes), the two
+  `CREATE_CALENDAR_EVENT` copies were byte-for-byte identical, so
+  duplicating it bought no real decoupling, just two places to update in
+  lockstep. It's also inconsistent with `EventFormFields`/`useEventForm`
+  already being imported directly from `resources/calendar-events/` into
+  `DayCell.tsx` — that cross-folder boundary was already crossed, so
+  keeping just this one mutation duplicated was the odd one out.
+- On save, refetch `GET_CALENDAR_EVENTS` with this cell's `studentId`/
+  `month` variables (not just the bare string form, since the variables
+  need to match exactly) so the new event appears immediately without a
+  full reload — mirrors how `updateStatus` in this same file already does
+  `refetchQueries: ['GetMonthView']` for lessons.
+- One new boolean (`isAddingEvent`) plus form-field state, mutually
+  exclusive with the existing `popoverLesson` state — opening one should
+  close the other.
+
+**All 4 tasks done.** One implementation detail worth recording since it
+diverged slightly from this doc: the popup's positioning technique is
+reused, but not with the exact same threshold as the lesson popover — at
+`w-80` it's wider than the lesson popover's `w-64`, so it needed its own
+flip variable (`column >= 5 ? 'right-full' : 'left-full'`, vs. the lesson
+popover's `column === 6`) to avoid overflowing the viewport from the
+second-to-last column, not just the last one. Also, `CREATE_CALENDAR_EVENT`
+is imported directly from `resources/api/calendarEvents.graphql.ts` rather
+than duplicated into `calendar/api.ts` — see the correction note above.
