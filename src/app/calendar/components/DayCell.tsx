@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { CalendarIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { CalendarEvent, MonthViewLesson } from '../types';
 import { useMutation } from '@apollo/client/react';
 import { UPDATE_OCCURRENCE_STATUS } from '../api';
@@ -50,6 +50,7 @@ export default function DayCell({
   const [isCompleting, setIsCompleting] = useState(false);
   const [pickedDate, setPickedDate] = useState(familyToday());
   const [rescheduleChecked, setRescheduleChecked] = useState(true);
+  const [isAddingEvent, setIsAddingEvent] = useState(false);
 
   useEffect(() => {
     const checkOverflow = () => {
@@ -87,7 +88,7 @@ export default function DayCell({
   return (
     <div
       ref={cellRef}
-      className={`relative p-2 bg-white min-h-0 border border-gray-200 
+      className={`group relative p-2 bg-white min-h-0 border border-gray-200
       ${isToday ? 'ring-2 ring-inset ring-blue-400' : ''}`}
     >
       {isValid && (
@@ -99,6 +100,19 @@ export default function DayCell({
         <div className="absolute right-2 top-2 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
           {lessons.length} lessons
         </div>
+      )}
+      {isValid && (
+        <button
+          type="button"
+          onClick={() => {
+            setPopoverLesson(null);
+            setIsAddingEvent(true);
+          }}
+          aria-label="Add event"
+          className="absolute right-2 bottom-2 w-[26px] h-[26px] rounded-full bg-slate-100 text-slate-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <PlusIcon className="w-3.5 h-3.5" />
+        </button>
       )}
       {popoverLesson && (
         <div
