@@ -36,7 +36,16 @@ deliberately **not** a full auth system — see "Decisions locked" below.
   for a bug later.
 - **Database: MongoDB Atlas free tier (M0, 512MB)** replaces the
   `homeschool-mongo` container. Only `MONGODB_URI` changes — no schema
-  change.
+  change. Considered GCP-native **Firestore** instead (would keep
+  everything inside one GCP project/billing, no public IP allowlisting) but
+  decided against it: Firestore isn't MongoDB-wire-protocol compatible, so
+  it'd mean rewriting every Mongoose schema/resolver and redesigning the
+  scheduling engine's queries around Firestore's more limited query model —
+  a multi-day rewrite with real regression risk on an app the family uses
+  daily, for a skill that (per job-hunting experience) shows up far less in
+  postings than Cloud Run/IAM/GKE/BigQuery — where Phases 2 and 4 already
+  spend the GCP-learning time. Revisit only as a throwaway side project, not
+  by migrating production data through it.
 - **No per-user login.** Data isn't sensitive enough to justify real auth.
   Instead, a single shared password gate (Phase 3) exists only to stop
   casual/accidental data-messing by a random visitor who finds the URL — not
@@ -76,6 +85,44 @@ deliberately **not** a full auth system — see "Decisions locked" below.
   Atlas has been confirmed working in prod — don't delete it as part of
   Phase 1 or 2.
 
+## Local gcloud CLI setup (devcontainer)
+
+The devcontainer (`docker-compose.yaml`'s `dev` service, Debian-based
+`node:20` image) doesn't ship with the `gcloud` CLI by default — it has to be
+installed manually per container instance. As of 2026-09-20 it's installed
+and authenticated as `alvin991@gmail.com`, targeting the
+`homeschool-planner-509220` GCP project (created, but no relevant APIs
+enabled yet — Phase 2 below hasn't started).
+
+**This setup lives in the container's writable layer, not a mounted volume**
+(only `.:/workspace` and the Mongo `db_data` volume are declared in
+`docker-compose.yaml`). It survives a plain `docker stop`/`start` of the same
+container, but a devcontainer **rebuild** (recreating the container from the
+image) wipes it — `gcloud` and the login both disappear and need redoing. If
+that happens, run:
+
+```bash
+# Install (already root in this container — no sudo)
+apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg curl
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee /etc/apt/sources.list.d/google-cloud-sdk.list
+apt-get update && apt-get install -y google-cloud-cli
+
+# Log in (device-code flow — no browser available in this container)
+gcloud auth login --no-launch-browser
+# Prints a URL: open it on your phone/laptop, sign in, paste the resulting code back here.
+
+# Point at this project
+gcloud config set project homeschool-planner-509220
+```
+
+Deliberately not baked into the `Dockerfile`'s `deps` stage (which would
+survive rebuilds) — decided to keep the dev image lean, since `gcloud` is
+only needed for the initial manual Phase 2 deploy below and occasional
+ad-hoc admin (checking logs, rotating secrets) afterward, not routine
+day-to-day dev work. Revisit if re-running this setup after every rebuild
+becomes annoying enough to be worth the tradeoff.
+
 ## Roadmap
 
 ### Phase 1 — MongoDB Atlas migration
@@ -86,6 +133,19 @@ deliberately **not** a full auth system — see "Decisions locked" below.
    Pick an Atlas region close to (ideally the same cloud provider as) the
    Cloud Run region chosen in Phase 2 — mainly for latency, not cost, since
    free-tier egress between them is still free at this scale.
+
+   **Confirmed 2026-09-22, hit exactly as predicted above**: first Cloud Run
+   deploy failed at runtime with `Could not connect to any servers in your
+   MongoDB Atlas cluster` — Cloud Run's shared, non-fixed egress IP pool
+   means there's no single IP worth allowlisting. Fix, in the **Atlas web
+   console** (no `gcloud`/CLI equivalent — this is MongoDB's own UI):
+   Atlas project → left sidebar **Network Access** → **Add IP Address** →
+   **Allow Access from Anywhere** (fills in `0.0.0.0/0`) → add a comment
+   noting why (e.g. "Cloud Run — no fixed egress IP") → confirm, wait
+   ~1 minute for the rule to go active. No redeploy needed — Cloud Run just
+   succeeds on its next connection attempt once the rule is live. Security
+   here rests entirely on the DB user's generated password, not IP
+   restriction — consistent with the decision already made above.
 2. Get the `mongodb+srv://...` connection string. Point a local dev run at
    it first to confirm connectivity, then migrate the real data over
    (`mongodump` from `homeschool-mongo` → `mongorestore` into Atlas),
@@ -100,10 +160,31 @@ deliberately **not** a full auth system — see "Decisions locked" below.
    it's live; don't assume Atlas is backing it up for you.
 
 ### Phase 2 — Cloud Run deploy (no login yet — keep the URL unguessable/unshared)
-1. Enable the Artifact Registry and Cloud Run APIs on a GCP project.
+1. **Done 2026-09-22.** Enable the Artifact Registry, Cloud Run, Secret
+   Manager, and Cloud Build APIs on the `homeschool-planner-509220` GCP
+   project (Secret Manager needed by step 3 below and Cloud Build by step 2
+   below — enabled together here to avoid a second round trip):
+   ```bash
+   gcloud services enable \
+     run.googleapis.com \
+     artifactregistry.googleapis.com \
+     secretmanager.googleapis.com \
+     cloudbuild.googleapis.com \
+     --project=homeschool-planner-509220
+   ```
+   Verify:
+   ```bash
+   gcloud services list --enabled --project=homeschool-planner-509220
+   ```
+   Enabling these also auto-enabled 4 dependency APIs GCP pulls in
+   automatically (`iam.googleapis.com`, `iamcredentials.googleapis.com`,
+   `pubsub.googleapis.com`, `containerregistry.googleapis.com`) — expected,
+   no action needed.
 2. Build the existing `Dockerfile`'s `runner` stage and push it to Artifact
-   Registry (`gcloud builds submit`, or local `docker build` + `docker
-   push`).
+   Registry. This container has no local Docker daemon, so use the
+   Cloud-Build-based route (`gcloud builds submit`) rather than local
+   `docker build` + `docker push` — see [Local gcloud CLI
+   setup](#local-gcloud-cli-setup-devcontainer) above for why.
 3. `gcloud run deploy` pointing at that image. Put `MONGODB_URI` in Secret
    Manager and mount it as an env var — Cloud Run supports this directly,
    no `env_file` juggling needed.
@@ -143,6 +224,84 @@ deliberately **not** a full auth system — see "Decisions locked" below.
    and remove `docker-compose.prod.yaml` (local `docker-compose.yaml` for
    dev is unaffected). `deploy.yml` itself is rewritten as part of Phase 2/4
    rather than kept around — see the CI/CD decision above.
+
+## First deploy: what actually happened (2026-09-22, narrated walkthrough)
+
+Phase 1 and Phase 2 above are written as a terse roadmap; this section is the
+same ground covered again as a narrated walkthrough, for re-reading later
+while still learning GCP. The first real deploy went source code → live
+`*.run.app` URL in 9 steps:
+
+1. **Confirmed the tools were ready.** `gcloud` (Google's CLI for
+   controlling a GCP account from the terminal) was already installed and
+   logged in inside the devcontainer — see [Local gcloud CLI
+   setup](#local-gcloud-cli-setup-devcontainer) above. Project
+   `homeschool-planner-509220` already existed — a GCP **project** is the
+   top-level container for billing, permissions, and every resource created
+   below.
+
+2. **Enabled the GCP services needed** (`gcloud services enable ...`). GCP
+   projects don't have access to every product by default — each one is a
+   separate on/off switch. Turned on **Cloud Run** (runs the app),
+   **Artifact Registry** (stores the built container image), **Secret
+   Manager** (stores the DB password), **Cloud Build** (builds the image on
+   Google's servers, since this devcontainer has no Docker daemon). This
+   auto-enabled 4 more dependency APIs (IAM, Pub/Sub, etc.) — expected, not
+   something explicitly requested.
+
+3. **Created an empty repository to hold the image**
+   (`gcloud artifacts repositories create`). The app needs to be packaged
+   as a **container image** — code + Node.js + every dependency, bundled so
+   it runs identically anywhere — before it can be stored, it needs
+   somewhere to live. This created that storage location (repository
+   `homeschool-planner`, region `us-west1` — the GCP region geographically
+   closest to Edmonton; there's no Western-Canada region).
+
+4. **Built the image and pushed it there** (`gcloud builds submit
+   --tag=...`). Read `Dockerfile`, ran the full multi-stage build (install
+   deps → build Next.js → assemble the lean `runner` image) on Google's
+   infrastructure rather than locally, pushed the result into the
+   repository from step 3. ~5 minutes, ended `STATUS: SUCCESS`.
+
+5. **Stored the database password safely** (`gcloud secrets create
+   mongodb-uri`). The real Atlas connection string (from `.env`) needed to
+   reach the running app without being baked into the image itself — Secret
+   Manager is GCP's vault for this. Piped straight from `.env` into the
+   secret via stdin, never printed to a terminal or written to a second
+   file.
+
+6. **Told Cloud Run to actually run the image** (`gcloud run deploy`). This
+   creates the actual **Cloud Run service** — the named, running resource
+   with a public URL. Flags used: `--allow-unauthenticated` (no Google
+   login required to reach it — fine since there's no per-user auth system,
+   just a future password gate in Phase 3), `--min-instances=0` (scale to
+   zero cost when idle), `--set-secrets` (inject the Step 5 secret as the
+   `MONGODB_URI` env var at runtime).
+
+7. **Hit and fixed a permissions error.** First deploy attempt failed:
+   Cloud Run runs the container under an automatic robot identity (a
+   **service account**), which didn't yet have permission to read the
+   Step 5 secret. Fixed with `gcloud secrets add-iam-policy-binding`,
+   granting that service account the narrow "Secret Manager Secret
+   Accessor" role — read access to that one secret, nothing else.
+
+8. **Redeployed — service started, but couldn't reach the database.**
+   MongoDB Atlas only accepts connections from allowlisted IPs, and Cloud
+   Run has no single fixed IP to allowlist (shared, rotating
+   infrastructure). Fixed on Atlas's own website (a separate product from
+   GCP entirely, no `gcloud` equivalent) — see the Phase 1 note above for
+   the exact console steps (Network Access → Allow Access from Anywhere).
+
+9. **It worked** — confirmed live and reachable end-to-end against Atlas.
+
+**Where this leaves things**, relative to the phases above: the *manual,
+one-off* version of Phase 1 and Phase 2 is done — the app is live at its
+`*.run.app` URL, unguessable/unshared for now. Still open: Phase 2's env-var
+cleanup item (step 6 above), Phase 3 (password gate — right now this URL has
+zero access control beyond obscurity), Phase 4 (domain mapping + retiring
+the old self-hosted path), and separately, rewriting `deploy.yml` so this
+becomes a one-click GitHub Actions deploy instead of manual `gcloud`
+commands run by hand.
 
 ## Open questions (not blocking — decide when you get there)
 
