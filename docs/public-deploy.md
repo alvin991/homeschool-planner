@@ -303,6 +303,84 @@ the old self-hosted path), and separately, rewriting `deploy.yml` so this
 becomes a one-click GitHub Actions deploy instead of manual `gcloud`
 commands run by hand.
 
+## Reference: GCP IAM, and how to add/rotate a Secret Manager secret
+
+Written after digging into why step 7 above happened, for re-reading whenever
+a new secret needs adding later.
+
+**What IAM is.** Every GCP resource — a secret, a Cloud Run service, a
+storage bucket, the project itself — has an attached policy that answers one
+question: *which identities can do which actions on this specific thing?* A
+policy is a list of **bindings**, each one an (identity, role, resource)
+triple:
+
+- **Identity** — a human Google account, a **service account** (a robot
+  identity a *service* like Cloud Run uses instead of a human logging in), a
+  Google Group, or `allUsers` (the public internet).
+- **Role** — a named bundle of permissions. `roles/secretmanager.secretAccessor`
+  bundles exactly one (read a secret's value); broad legacy roles like
+  `roles/editor` bundle hundreds across every service. Prefer the narrowest
+  predefined role, scoped to the single resource that needs it — not a
+  project-wide grant.
+- **Resource** — what the policy attaches to. Policies exist at every level
+  of GCP's hierarchy (**Organization → Folder → Project → individual
+  resource**) and are inherited downward. Granting a role directly on one
+  secret (as done below) is the narrowest possible scope.
+
+**GCP defaults to deny.** No identity can touch a resource unless some
+binding, somewhere in that hierarchy, explicitly grants it. That's why step 7
+above failed instead of silently working: Cloud Run's auto-created service
+account (`616908089248-compute@developer.gserviceaccount.com`, GCP's default
+per-project "Compute Engine default service account") started with zero
+bindings on the new secret. Creating the secret (step 5) only made the
+*resource* exist — it granted access to no one. The account used to run
+`gcloud secrets create` had broad project-level rights already (the project
+was created under it), which is why creating/reading it from the CLI "just
+worked" and made the missing grant easy to miss — the *running app* is a
+completely separate identity that needed its own explicit binding.
+
+**How to add a new secret** (e.g. a new value landing in `.env` that Cloud
+Run needs to read):
+
+```bash
+# 1. Create it — pipe the value in, never pass it as a CLI arg (shell history):
+grep '^NEW_VAR_NAME=' .env | cut -d '=' -f2- | \
+  gcloud secrets create new-secret-name \
+    --data-file=- \
+    --replication-policy=automatic \
+    --project=homeschool-planner-509220
+
+# 2. Grant the Cloud Run service account read access — every new secret
+#    needs this once, it's the step that bit step 7 above:
+gcloud secrets add-iam-policy-binding new-secret-name \
+  --member="serviceAccount:616908089248-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project=homeschool-planner-509220
+
+# 3. Wire it into the running service. Use --update-secrets (merges) not
+#    --set-secrets (replaces the whole mapping and would silently drop
+#    MONGODB_URI):
+gcloud run services update homeschool-planner \
+  --region=us-west1 \
+  --update-secrets=NEW_VAR_NAME=new-secret-name:latest
+```
+
+Secret names are lowercase-with-hyphens (`new-secret-name`), separate from
+the env var name it's injected as (`NEW_VAR_NAME`) — that mapping happens in
+step 3.
+
+**How to rotate an existing secret's value** (e.g. changing the Atlas
+password later):
+
+```bash
+printf '%s' 'new-value' | gcloud secrets versions add mongodb-uri --data-file=-
+```
+
+Gotcha: a running Cloud Run **revision** reads the secret once at container
+startup and doesn't re-check `:latest` while it keeps running. A new secret
+version has no effect until a new revision is deployed — trigger one with a
+no-op `gcloud run services update` (or a real redeploy) right after rotating.
+
 ## Open questions (not blocking — decide when you get there)
 
 - Whether `homeschool-mongo` / the Windows self-hosted runner get
