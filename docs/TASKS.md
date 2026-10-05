@@ -98,8 +98,9 @@ explicit requests and daily-use pain points first, dev-only/infra items last)
    one list does both jobs; the `students` field stays in the data model
    unused rather than getting UI, since one student exists today. Also
    deliberately decoupled from the separate, much bigger "always select a
-   student first, everywhere in the app" idea floated alongside this
-   (folded into #7's nav redesign below, not a prerequisite here). Full
+   student first, everywhere in the app" idea (project owner's own idea,
+   floated alongside this) (folded into #7's nav redesign below, not a
+   prerequisite here). Full
    design, decisions, data model, schema, resolver wiring, migration plan,
    and phased roadmap:
    [`docs/suspension-periods-redesign.md`](suspension-periods-redesign.md).
@@ -356,6 +357,23 @@ explicit requests and daily-use pain points first, dev-only/infra items last)
     [`docs/public-deploy.md`](public-deploy.md). Design-partner mode:
     project owner implements (wants the hands-on GCP learning), reviewed as
     he goes.
+    - **Redis/Upstash evaluated 2026-10-04 — not worth it for calendar
+      caching, but confirmed as the right fit if Phase 3's login throttle
+      ever needs to move off its in-memory counter.** Looked into caching
+      `calendarMonthView`/`calendarDayView` in Redis to avoid
+      recomputation; verdict was negative — the query isn't pure
+      (`processOverdueLessons` mutates `scheduled_dates` as a time-based
+      side effect inside the read path, independent of any explicit edit),
+      invalidation would need hooks across 7 mutation call sites across
+      `enrollmentResolvers.ts`/`calendarEventResolvers.ts`, and a
+      self-hosted Redis container wouldn't even be reachable from Cloud Run
+      (no fixed network, scales to zero) while `docker-compose.prod.yaml`
+      — where it'd naturally live — is itself being retired per Phase 4.
+      Upstash (serverless, HTTP-based, no persistent connection needed)
+      remains the right tool *if* Phase 3's login-attempt throttle
+      (`docs/public-deploy.md` Phase 3 step 4) ever actually outgrows its
+      planned in-memory counter. No action taken now — revisit only if
+      that happens.
 
 25. **Bump npm.** Noticed 2026-09-22 during the Cloud Run build (`gcloud
     builds submit`, item #24): `npm notice` flagged a new major version
@@ -364,6 +382,72 @@ explicit requests and daily-use pain points first, dev-only/infra items last)
     effect; check for breaking changes in the npm 11/12 changelogs before
     bumping, since a major version jump could change lockfile format or CLI
     behavior.
+
+26. **Today Dashboard.** Idea surfaced via a ChatGPT brainstorm, discussed
+    with wife 2026-10-04. A single landing page combining: a greeting +
+    today's date, today's lesson list with pending/completed checkmarks,
+    today's events (from `calendarEvents`), a per-course progress bar (see
+    #27), and a short "upcoming" preview (tomorrow's lesson count, next
+    week's events). Rough mockup from the brainstorm:
+    ```
+    Good morning! — October 4
+
+    Today's Lessons
+    ✓ Math Lesson 42
+    ✓ Reading Chapter 8
+    □ Science Lesson 5
+
+    Today's Events
+    🩰 Dance — 5:30 PM
+
+    Course Progress
+    Math Grade 4       ███████░░░ 78%
+    Science Grade 4    █████░░░░░ 52%
+
+    Upcoming
+    Tomorrow: 3 lessons
+    Next week: Dance x2
+    ```
+    Overlaps with #8 ("Surface Day View in the main nav as 'Today'") — this
+    would likely *become* that "Today" page rather than sit alongside the
+    existing Day View, since it's a superset (lessons + events + progress +
+    upcoming, vs. Day View's lessons-only). Depends on #7 (shared student
+    context) same as #8 does, since it needs a student selected before it
+    can render anything. Data sources mostly exist already
+    (`calendarDayView`, `calendarEvents`, course progress — see #27), but
+    "upcoming" (tomorrow + next week preview) isn't served by any current
+    query and would need new resolver work. Not yet designed.
+
+27. **Course progress (bars, % complete per course).** Same source as #26;
+    also usable standalone outside the dashboard (e.g. a column on a course
+    list, or its own small card), not just embedded in it. Needs "progress"
+    defined before implementing — candidates: lessons completed / total
+    lessons in the course's *current* enrollment, vs. completed / total
+    across *all* enrollments ever run for that course (covers re-enrollment/
+    repeats). Also needs a decision on how `lesson_rate` bundling (multiple
+    lessons completed per occurrence) factors into the percentage. Related
+    to but distinct from #13 (enrollment progress comparison) — #13 is about
+    *schedule drift* (planned vs. actual dates), this is about raw
+    *completion percentage*; keep them separate rather than conflating. Not
+    yet designed.
+
+28. **Notes — scope undecided (daily / weekly / monthly?).** Same source as
+    #26. Not yet designed: granularity (one note per day? per week? per
+    month?), scope (per student, or shared across the family), and whether
+    a note attaches to a specific date/lesson or stands alone. Flagged here
+    so the idea isn't lost, not ready to implement — needs its own design
+    pass, likely its own doc once scoped (same convention as
+    `custom-calendar-events.md`/`suspension-periods-redesign.md`).
+
+29. **Archive an enrollment once all its lessons are completed.** Not yet
+    designed. Idea: once every lesson in an enrollment's `lesson_occurrences`
+    is `completed` (or `skipped`?), let it be archived — hidden from the
+    active enrollments list/calendar generation without deleting its data
+    (history needed for #13/#27 progress features). Open questions: manual
+    archive action vs. automatic once the last lesson completes; whether an
+    archived enrollment still shows on the calendar for its already-passed
+    dates or disappears entirely; whether it can be unarchived (e.g. if a
+    lesson gets reopened via #16's existing reopen flow after archiving).
 
 ## Working agreements
 
