@@ -184,7 +184,12 @@ becomes annoying enough to be worth the tradeoff.
    Registry. This container has no local Docker daemon, so use the
    Cloud-Build-based route (`gcloud builds submit`) rather than local
    `docker build` + `docker push` — see [Local gcloud CLI
-   setup](#local-gcloud-cli-setup-devcontainer) above for why.
+   setup](#local-gcloud-cli-setup-devcontainer) above for why. **Done
+   2026-10-04:** use the versioned `cloudbuild.yaml` at the repo root
+   (`gcloud builds submit --config=cloudbuild.yaml --substitutions=...`)
+   instead of the ad-hoc `--tag=` shorthand used for the very first manual
+   build — the shorthand has no way to pass `--build-arg`, which step 6
+   below now needs.
 3. `gcloud run deploy` pointing at that image. Put `MONGODB_URI` in Secret
    Manager and mount it as an env var — Cloud Run supports this directly,
    no `env_file` juggling needed.
@@ -192,15 +197,28 @@ becomes annoying enough to be worth the tradeoff.
    end-to-end.
 5. Don't share this URL with anyone yet or map the custom domain — there's
    no login at this point.
-6. **Do backlog [#19](TASKS.md) (proper env var management) here, not
-   after.** The `NEXT_PUBLIC_*`-bakes-in-at-build-time problem it describes
-   resurfaces in this new pipeline too: Cloud Build doesn't automatically
-   forward env vars into the build the way `docker-compose.prod.yaml`'s
-   `env_file:` did for the old path — it needs `--substitutions` or
-   `--build-arg` explicitly. Since the build step is being redone anyway
-   for Cloud Run, fix it properly now instead of carrying the old
-   `NODE_ENV`-based `DEV_STUDENT_ID`/`PROD_STUDENT_ID` switch in
-   [`calendar/page.tsx`](../src/app/calendar/page.tsx) into the new setup.
+6. **Done 2026-10-04 for the Cloud Run path** (backlog
+   [#20](TASKS.md) — was numbered #19 when this line was first written,
+   renumbered since). `calendar/page.tsx`'s old `NODE_ENV`-based
+   `DEV_STUDENT_ID`/`PROD_STUDENT_ID` switch is replaced with a single
+   `process.env.NEXT_PUBLIC_DEFAULT_STUDENT_ID` read. Wired through as a
+   proper build arg: `Dockerfile`'s `builder` stage takes `ARG
+   NEXT_PUBLIC_DEFAULT_STUDENT_ID` (defaulted to the current real student
+   ID, `6a09362f9289b2cc08b29c47` — all three environments, local/
+   self-hosted/Atlas, share this same ID as of 2026-10-04), and
+   `cloudbuild.yaml` passes it explicitly via `--build-arg` so it can be
+   overridden per-build without editing the Dockerfile.
+
+   **Scope note:** this fixes the *Cloud Run* build path generically (the
+   value now flows through `cloudbuild.yaml`'s substitutions, not a
+   hardcoded literal). `docker-compose.prod.yaml`'s self-hosted build still
+   has no build-arg plumbing of its own — it only works today because the
+   Dockerfile's `ARG` default happens to match the real ID. That's
+   intentional for now (self-hosted is mid-retirement per Phase 4, not
+   worth the full 4-file fix TASKS.md #20 originally scoped), but means the
+   self-hosted path would silently go stale if the student ID ever changes
+   before full cutover — update the Dockerfile default too if that
+   happens.
 
 ### Phase 3 — Login gate + login-attempt throttling
 1. Add a Next.js `middleware.ts` at the project root: any unauthenticated

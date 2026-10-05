@@ -3,7 +3,7 @@
 Living backlog for the homeschool-planner app. Written to be readable by any AI
 assistant or human picking up the project cold — no prior conversation needed.
 
-Last updated: 2026-09-22
+Last updated: 2026-10-04
 
 ## Context
 
@@ -284,20 +284,24 @@ explicit requests and daily-use pain points first, dev-only/infra items last)
     `EnrollmentList` components, `useEnrollmentForm`/`useEnrollments` hooks,
     shared `validateForm`. Pure code-quality item — no user-visible effect.
 
-20. **Proper env var management for dev/prod.** `calendar/page.tsx` currently
-    hardcodes two student IDs (`DEV_STUDENT_ID`, `PROD_STUDENT_ID`) and
-    switches between them via `NODE_ENV`. Converting this to a real env var
-    (e.g. `NEXT_PUBLIC_DEFAULT_STUDENT_ID`) is more involved than it looks:
-    `NEXT_PUBLIC_` vars get baked into the JS bundle at **build time**, but
-    `docker-compose.prod.yaml`'s `env_file:` only reaches the *running
-    container*, not the Docker build step. Doing it properly needs: `ARG`/
-    `ENV` in the `Dockerfile`'s builder stage, a `build: args:` block in
-    `docker-compose.prod.yaml`, and `.github/workflows/deploy.yml` loading
-    `production.env` into the runner's shell environment before
-    `docker compose ... --build` runs (compose's `${VAR}` substitution reads
-    the invoking shell env, not `env_file:`) — plus the code change itself.
-    Four files, not one; budget a focused session rather than folding it into
-    an unrelated fix. Pure infra item — no user-visible effect.
+20. **Proper env var management for dev/prod — done 2026-10-04 for the Cloud
+    Run path, self-hosted path intentionally left as-is.** `calendar/page.tsx`
+    no longer hardcodes `DEV_STUDENT_ID`/`PROD_STUDENT_ID` switched via
+    `NODE_ENV` — now a single `process.env.NEXT_PUBLIC_DEFAULT_STUDENT_ID`
+    read. `NEXT_PUBLIC_` vars bake into the JS bundle at **build time**, so
+    this is wired through `Dockerfile`'s `builder` stage (`ARG`/`ENV`,
+    defaulted to the real student ID) and `cloudbuild.yaml` (passes it as an
+    explicit `--build-arg`, overridable via `--substitutions`) — see
+    `docs/public-deploy.md` Phase 2 step 6 for the full writeup.
+    `docker-compose.prod.yaml`'s self-hosted build still has no build-arg
+    plumbing of its own (would need its own `build: args:` block plus
+    `.github/workflows/deploy.yml` loading the value into the runner's shell
+    env before `--build` runs — compose's `${VAR}` substitution reads the
+    invoking shell, not `env_file:`). Left alone deliberately: self-hosted is
+    being retired per Phase 4, works today only because the Dockerfile's
+    `ARG` default happens to match the real ID, and fixing it properly would
+    be throwaway work on a path that's going away. Revisit only if cutover
+    stalls and the student ID needs to change before then.
 
 21. **Automate semver tagging in CI/CD.** Currently tagged manually after
     deploy, which is easy to forget. Commit messages already follow

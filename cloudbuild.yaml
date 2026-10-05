@@ -1,0 +1,33 @@
+# Cloud Build config for the Cloud Run deploy path (docs/public-deploy.md).
+#
+# Replaces the ad-hoc `gcloud builds submit --tag=...` command used for the first
+# manual deploy — that shorthand builds the Dockerfile as-is with no way to pass
+# --build-arg. This file makes the build-arg explicit and versioned, and is reused
+# by deploy-cloudrun.yml so manual and CI builds can't drift apart.
+#
+# Usage:
+#   gcloud builds submit --config=cloudbuild.yaml \
+#     --substitutions=_IMAGE_TAG=v2,_NEXT_PUBLIC_DEFAULT_STUDENT_ID=6a09362f9289b2cc08b29c47 \
+#     --project=homeschool-planner-509220
+#
+# _IMAGE_TAG defaults to "latest" if omitted. _NEXT_PUBLIC_DEFAULT_STUDENT_ID defaults
+# to the Dockerfile's own ARG default if omitted, so omitting both still produces a
+# correct image today.
+
+substitutions:
+  _IMAGE_TAG: latest
+  _NEXT_PUBLIC_DEFAULT_STUDENT_ID: '6a09362f9289b2cc08b29c47'
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --target=runner
+      - --build-arg
+      - NEXT_PUBLIC_DEFAULT_STUDENT_ID=${_NEXT_PUBLIC_DEFAULT_STUDENT_ID}
+      - -t
+      - us-west1-docker.pkg.dev/${PROJECT_ID}/homeschool-planner/homeschool-planner:${_IMAGE_TAG}
+      - .
+
+images:
+  - us-west1-docker.pkg.dev/${PROJECT_ID}/homeschool-planner/homeschool-planner:${_IMAGE_TAG}
