@@ -81,6 +81,12 @@ deliberately **not** a full auth system — see "Decisions locked" below.
 - `docker-compose.prod.yaml` and the self-hosted-runner path in
   `.github/workflows/deploy.yml` stop being used for prod once cutover
   (Phase 4) is done. `docker-compose.yaml` (local dev) is unaffected.
+- **Added 2026-10-04:** `.github/workflows/deploy-cloudrun.yml` is a new,
+  separate manual-trigger workflow for deploying to Cloud Run — deliberately
+  *not* a replacement of `deploy.yml` yet. Both exist side by side until
+  Phase 4 cutover is a deliberate decision, not an accidental side effect of
+  this file existing; `deploy.yml` still deploys the self-hosted app your
+  family actually uses day to day in the meantime.
 - The standalone `homeschool-mongo` container gets decommissioned only after
   Atlas has been confirmed working in prod — don't delete it as part of
   Phase 1 or 2.
@@ -122,6 +128,85 @@ only needed for the initial manual Phase 2 deploy below and occasional
 ad-hoc admin (checking logs, rotating secrets) afterward, not routine
 day-to-day dev work. Revisit if re-running this setup after every rebuild
 becomes annoying enough to be worth the tradeoff.
+
+## GitHub Actions Workload Identity Federation setup (done 2026-10-04)
+
+One-time GCP-side setup so `.github/workflows/deploy-cloudrun.yml` can
+authenticate to GCP without a long-lived service account key stored as a
+GitHub secret (the "Decisions locked" CI/CD choice above). **Workload
+Identity Federation (WIF)**, in plain terms: GitHub's own OIDC token (which
+every Actions run gets for free, scoped to that specific repo/workflow) is
+exchanged for short-lived GCP credentials, *if and only if* GCP has been
+told in advance to trust tokens from this exact repo. No secret ever has to
+be generated, copied, or rotated — there's nothing to leak.
+
+Created, in order:
+
+```bash
+PROJECT=homeschool-planner-509220
+PROJECT_NUMBER=616908089248
+
+# 1. A dedicated identity for GitHub Actions to act as (not the default
+#    compute service account — narrower, single-purpose, easy to audit).
+gcloud iam service-accounts create github-deployer \
+  --display-name="GitHub Actions deployer (WIF)" \
+  --project=$PROJECT
+
+# 2. A pool — a container for external (non-Google) identity providers.
+gcloud iam workload-identity-pools create "github-pool" \
+  --location="global" \
+  --display-name="GitHub Actions pool" \
+  --project=$PROJECT
+
+# 3. A provider inside that pool — trusts GitHub's OIDC issuer specifically,
+#    and --attribute-condition restricts it to tokens asserting THIS repo
+#    (without it, any GitHub repo anywhere could claim this identity).
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+  --location="global" \
+  --workload-identity-pool="github-pool" \
+  --display-name="GitHub provider" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
+  --attribute-condition="assertion.repository=='alvin991/homeschool-planner'" \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --project=$PROJECT
+
+# 4. Let that specific repo's tokens impersonate the service account from
+#    step 1 (the actual "trust" link between GitHub and this identity).
+gcloud iam service-accounts add-iam-policy-binding \
+  "github-deployer@${PROJECT}.iam.gserviceaccount.com" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool/attribute.repository/alvin991/homeschool-planner" \
+  --project=$PROJECT
+
+# 5. Grant that service account only what it needs to build + deploy —
+#    not roles/editor or similar broad grants.
+for ROLE in roles/run.admin roles/artifactregistry.writer roles/cloudbuild.builds.editor roles/iam.serviceAccountUser; do
+  gcloud projects add-iam-policy-binding $PROJECT \
+    --member="serviceAccount:github-deployer@${PROJECT}.iam.gserviceaccount.com" \
+    --role="$ROLE"
+done
+```
+
+`roles/iam.serviceAccountUser` (step 5) deserves a note: this lets
+`github-deployer` *act as* the Cloud Run runtime service account
+(`${PROJECT_NUMBER}-compute@developer.gserviceaccount.com`) when deploying —
+without it, `gcloud run deploy` fails the same way step 7 of the manual
+deploy walkthrough did, just one layer up (the deployer, not the running
+container, needs the grant this time).
+
+The provider's full resource name (needed by `google-github-actions/auth` in
+the workflow) is retrieved via:
+```bash
+gcloud iam workload-identity-pools providers describe "github-provider" \
+  --location="global" --workload-identity-pool="github-pool" --project=$PROJECT \
+  --format="value(name)"
+# -> projects/616908089248/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+```
+Both this and the service account email are hardcoded directly in
+`deploy-cloudrun.yml` rather than kept as GitHub repo variables — neither is
+a secret (the attribute condition in step 3 is what actually enforces trust,
+not secrecy of the name), so a repo variable would add setup steps without
+adding security.
 
 ## Roadmap
 
