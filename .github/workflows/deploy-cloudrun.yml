@@ -1,0 +1,69 @@
+# Manual-trigger deploy to Cloud Run, via Workload Identity Federation (no
+# long-lived service account key stored as a GitHub secret) — see
+# docs/public-deploy.md for the full plan. Deliberately a SEPARATE workflow
+# from deploy.yml (the self-hosted path) rather than a replacement: the
+# self-hosted app is still the one actually serving the family day-to-day
+# (no login gate or custom domain on Cloud Run yet, Phases 3/4). Retire
+# deploy.yml and fold this into it only once cutover is deliberate, not
+# before.
+#
+# One-time GCP-side setup this depends on (already done, 2026-10-04, see
+# public-deploy.md): workload identity pool "github-pool" + OIDC provider
+# "github-provider" trusting this exact repo, and service account
+# "github-deployer" granted run.admin / artifactregistry.writer /
+# cloudbuild.builds.editor / iam.serviceAccountUser.
+
+name: Deploy (Cloud Run)
+
+on:
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: homeschool-planner-509220
+  REGION: us-west1
+  SERVICE: homeschool-planner
+  REPOSITORY: homeschool-planner
+  # Not secrets — a WIF provider/service-account resource name carries no
+  # credential by itself; only this exact repo (baked into the provider's
+  # attribute condition on the GCP side) can ever exchange it for a token.
+  WORKLOAD_IDENTITY_PROVIDER: projects/616908089248/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  DEPLOY_SERVICE_ACCOUNT: github-deployer@homeschool-planner-509220.iam.gserviceaccount.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required to mint the OIDC token Workload Identity Federation exchanges for GCP credentials
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build image (Cloud Build)
+        run: |
+          gcloud builds submit --config=cloudbuild.yaml \
+            --substitutions=_IMAGE_TAG=${{ github.sha }} \
+            --project=${{ env.PROJECT_ID }}
+
+      - id: deploy
+        name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          project_id: ${{ env.PROJECT_ID }}
+          image: us-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}
+          flags: --allow-unauthenticated --min-instances=0
+          env_vars: NODE_ENV=production
+          secrets: MONGODB_URI=mongodb-uri:latest
+
+      - name: Show deployed URL
+        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"

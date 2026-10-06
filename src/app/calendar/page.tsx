@@ -11,10 +11,7 @@ function CalendarContent() {
   const view = searchParams.get('view') ?? 'month';
   const date = searchParams.get('date') ?? undefined;
   
-  const DEV_STUDENT_ID = '6a221c10e8f7d2867590f1a5';
-  const PROD_STUDENT_ID = '6a09362f9289b2cc08b29c47';
-  const studentId = searchParams.get('studentId') 
-    ?? (process.env.NODE_ENV === 'production' ? PROD_STUDENT_ID : DEV_STUDENT_ID);
+  const studentId = searchParams.get('studentId') ?? process.env.NEXT_PUBLIC_DEFAULT_STUDENT_ID ?? '';
 
   const month = searchParams.get('month') ?? familyToday().slice(0, 7); // "YYYY-MM" format
 

@@ -1,0 +1,32 @@
+# Never let these reach a build context — real secrets / real family data.
+.env
+.env.local
+.env.*.local
+data_backup
+
+# Dependency + build output — the Dockerfile regenerates these itself
+# (npm ci in the deps stage, npm run build in the builder stage).
+node_modules
+.next
+out
+build
+coverage
+
+# Version control / CI / dev-only tooling — not needed to run the app.
+.git
+.github
+.devcontainer
+
+# Deliberately excluded from the shipped image already (see CLAUDE.md);
+# keeping them out of the build context too, not just the final stage.
+scripts
+
+# Build artifacts / OS junk.
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
