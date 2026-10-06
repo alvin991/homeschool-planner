@@ -3,7 +3,7 @@
 Living backlog for the homeschool-planner app. Written to be readable by any AI
 assistant or human picking up the project cold — no prior conversation needed.
 
-Last updated: 2026-10-04
+Last updated: 2026-10-06
 
 ## Context
 
@@ -357,6 +357,10 @@ explicit requests and daily-use pain points first, dev-only/infra items last)
     [`docs/public-deploy.md`](public-deploy.md). Design-partner mode:
     project owner implements (wants the hands-on GCP learning), reviewed as
     he goes.
+    - **Phase 2 done 2026-10-06** — Cloud Run deploys are now one click
+      (Actions → Deploy (Cloud Run)), first CI deploy live as revision
+      `homeschool-planner-00003-qq2`. Next up: Phase 3 (login gate +
+      throttling) — URL stays unshared until then.
     - **Redis/Upstash evaluated 2026-10-04 — not worth it for calendar
       caching, but confirmed as the right fit if Phase 3's login throttle
       ever needs to move off its in-memory counter.** Looked into caching

@@ -185,6 +185,19 @@ for ROLE in roles/run.admin roles/artifactregistry.writer roles/cloudbuild.build
     --member="serviceAccount:github-deployer@${PROJECT}.iam.gserviceaccount.com" \
     --role="$ROLE"
 done
+
+# 6. Added 2026-10-06 after the first CI runs of deploy-cloudrun.yml failed
+#    without them — see "Extra deployer grants" below for which error each
+#    one fixed.
+for ROLE in roles/serviceusage.serviceUsageConsumer roles/storage.bucketViewer roles/logging.viewer; do
+  gcloud projects add-iam-policy-binding $PROJECT \
+    --member="serviceAccount:github-deployer@${PROJECT}.iam.gserviceaccount.com" \
+    --role="$ROLE"
+done
+# Scoped to Cloud Build's source-staging bucket only, not project-wide storage.
+gcloud storage buckets add-iam-policy-binding gs://${PROJECT}_cloudbuild \
+  --member="serviceAccount:github-deployer@${PROJECT}.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
 ```
 
 `roles/iam.serviceAccountUser` (step 5) deserves a note: this lets
@@ -193,6 +206,23 @@ done
 without it, `gcloud run deploy` fails the same way step 7 of the manual
 deploy walkthrough did, just one layer up (the deployer, not the running
 container, needs the grant this time).
+
+**Extra deployer grants (step 6), added 2026-10-06.** The original four
+roles were enough to start a build but not to finish one — the first CI
+runs of `deploy-cloudrun.yml` failed in `gcloud builds submit` three times
+before succeeding:
+
+| Error | Fix |
+|---|---|
+| `The user is forbidden from accessing the bucket [homeschool-planner-509220_cloudbuild]` (message suggests `serviceusage.services.use`) | `roles/serviceusage.serviceUsageConsumer` (project) + `roles/storage.admin` on the `_cloudbuild` bucket only, so it can upload the source tarball |
+| Same bucket error again | `roles/storage.bucketViewer` (project) — `gcloud builds submit` lists the project's buckets to confirm the default `<project>_cloudbuild` bucket really belongs to this project (anti-squatting check), and `storage.buckets.list` is project-level, so the bucket-scoped grant above doesn't cover it. This was the real fix for the bucket error. |
+| `This tool can only stream logs if you are Viewer/Owner of the project` — build actually **succeeded** (check `gcloud builds describe <id>`), but `gcloud` exited non-zero so the deploy step was skipped | `options: logging: CLOUD_LOGGING_ONLY` in `cloudbuild.yaml` + `roles/logging.viewer` (project), instead of granting the broad project `roles/viewer` |
+
+`serviceUsageConsumer` may turn out to be unnecessary — the error message
+pointed at it, but `bucketViewer` is what actually unblocked the upload, and
+the two were never tested separately. Harmless to keep (it only allows
+*using* already-enabled APIs, not enabling/disabling them); remove it and
+re-run a deploy if you ever want the absolute minimum set.
 
 The provider's full resource name (needed by `google-github-actions/auth` in
 the workflow) is retrieved via:
@@ -244,7 +274,7 @@ adding security.
    above), set up a periodic manual/cron `mongodump` against Atlas once
    it's live; don't assume Atlas is backing it up for you.
 
-### Phase 2 — Cloud Run deploy (no login yet — keep the URL unguessable/unshared)
+### Phase 2 — Cloud Run deploy (no login yet — keep the URL unguessable/unshared) — DONE 2026-10-06
 1. **Done 2026-09-22.** Enable the Artifact Registry, Cloud Run, Secret
    Manager, and Cloud Build APIs on the `homeschool-planner-509220` GCP
    project (Secret Manager needed by step 3 below and Cloud Build by step 2
@@ -275,11 +305,12 @@ adding security.
    instead of the ad-hoc `--tag=` shorthand used for the very first manual
    build — the shorthand has no way to pass `--build-arg`, which step 6
    below now needs.
-3. `gcloud run deploy` pointing at that image. Put `MONGODB_URI` in Secret
-   Manager and mount it as an env var — Cloud Run supports this directly,
-   no `env_file` juggling needed.
-4. Set `min-instances=0`. Confirm the generated `*.run.app` URL works
-   end-to-end.
+3. **Done 2026-09-22** (manually — see "First deploy" below; automated
+   2026-10-06 via `deploy-cloudrun.yml`). `gcloud run deploy` pointing at
+   that image. Put `MONGODB_URI` in Secret Manager and mount it as an env
+   var — Cloud Run supports this directly, no `env_file` juggling needed.
+4. **Done 2026-09-22.** Set `min-instances=0`. Confirm the generated
+   `*.run.app` URL works end-to-end.
 5. Don't share this URL with anyone yet or map the custom domain — there's
    no login at this point.
 6. **Done 2026-10-04 for the Cloud Run path** (backlog
@@ -304,6 +335,17 @@ adding security.
    self-hosted path would silently go stale if the student ID ever changes
    before full cutover — update the Dockerfile default too if that
    happens.
+
+**Phase 2 closed 2026-10-06.** First successful CI deploy: Actions →
+**Deploy (Cloud Run)** → Run workflow on `main` at `3c57edf`, producing
+Cloud Run revision `homeschool-planner-00003-qq2` serving image tag
+`3c57edf…` (every image is tagged with the commit SHA it was built from, so
+`gcloud run services describe homeschool-planner --region=us-west1
+--format="value(spec.template.spec.containers[0].image)"` tells you exactly
+which commit is live). Verified `/calendar` returns 200 and the student ID
+build arg is baked into the calendar page's client JS chunk. Getting there
+took three extra IAM grants and a `cloudbuild.yaml` logging change — see
+"Extra deployer grants" in the WIF setup section above. Next: Phase 3.
 
 ### Phase 3 — Login gate + login-attempt throttling
 1. Add a Next.js `middleware.ts` at the project root: any unauthenticated
@@ -405,6 +447,10 @@ zero access control beyond obscurity), Phase 4 (domain mapping + retiring
 the old self-hosted path), and separately, rewriting `deploy.yml` so this
 becomes a one-click GitHub Actions deploy instead of manual `gcloud`
 commands run by hand.
+
+**Update 2026-10-06:** the env-var cleanup and the one-click deploy are both
+done — see Phase 2 above. The one-click deploy ended up as a separate
+`deploy-cloudrun.yml` rather than a rewrite of `deploy.yml`.
 
 ## Reference: GCP IAM, and how to add/rotate a Secret Manager secret
 
