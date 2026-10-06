@@ -25,7 +25,7 @@ npx tsc --noEmit                            # type-check only (also run in CI)
 
 CI (`.github/workflows/test.yml`) runs `npx vitest run` then `npx tsc --noEmit` on every push/PR — run both before considering a change done. There is no `vitest.config.*` or `playwright.config.*`; tests are plain `*.test.ts` files colocated with the code they test (e.g. `src/utils/dateUtils.test.ts`, `src/app/api/graphql/lib/enrollmentUtils.test.ts`). Playwright is a devDependency but not currently wired into any script.
 
-Deploy is manual-only (`workflow_dispatch`) on a self-hosted Windows runner via `docker-compose.prod.yaml`; see `docs/public-deploy.md` and `docs/RUNNING_MIGRATIONS.md` for the deploy/migration runbooks — don't assume push-to-main deploys.
+Deploys are manual-only (`workflow_dispatch`) and there are two independent paths until Phase 4 cutover: `deploy.yml` (self-hosted Windows runner via `docker-compose.prod.yaml`, serves the family today, local `homeschool-mongo`) and `deploy-cloudrun.yml` (GitHub-hosted → Cloud Build via `cloudbuild.yaml` → Cloud Run, Atlas, auth via Workload Identity Federation, no login gate yet). See `docs/public-deploy.md` and `docs/RUNNING_MIGRATIONS.md` for the deploy/migration runbooks — don't assume push-to-main deploys.
 
 ## Architecture
 
@@ -60,4 +60,5 @@ Three-tier: React client components → one GraphQL HTTP endpoint (`POST /api/gr
 - `docs/TASKS.md` — living backlog and change history, written to be read cold; check it for context on why something is shaped the way it is, and update it when shipping backlog items.
 - `docs/ENROLLMENT_SYSTEM_DESIGN.md`, `docs/calendar-design.md`, `docs/custom-calendar-events.md`, `docs/reschedule-remaining-on-backdate.md` — design docs for those subsystems.
 - `docs/RUNNING_MIGRATIONS.md` — runbook for one-off scripts against production.
+- `docs/docker-tutorial.md`, `docs/github-actions-tutorial.md` — learning-oriented walkthroughs of this repo's Docker and GitHub Actions setup (the maintainer is using this project to learn CI/CD and GCP; keep them accurate when changing workflows).
 - `docs/public-deploy.md` — deployment plan/notes (currently being edited on this branch).
