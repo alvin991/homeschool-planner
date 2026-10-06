@@ -4,7 +4,7 @@ Living design doc for taking the app from LAN/self-hosted-only to reachable
 on the public internet. Written to be readable by any AI assistant or human
 picking up the project cold — no prior conversation needed.
 
-Last updated: 2026-09-17
+Last updated: 2026-10-06
 
 ## Context
 
@@ -74,7 +74,11 @@ deliberately **not** a full auth system — see "Decisions locked" below.
   official `google-github-actions/deploy-cloudrun` action, authenticating
   via Workload Identity Federation (no long-lived service account key
   stored as a GitHub secret). The MacBook stays dev-only either way — it
-  was never part of the deploy path.
+  was never part of the deploy path. **What actually happened
+  (2026-10-04):** instead of rewriting `deploy.yml` in place, the Cloud Run
+  workflow was added as a *separate* file, `deploy-cloudrun.yml`, so the
+  self-hosted deploy keeps working until cutover. `deploy.yml` gets deleted
+  in Phase 4 rather than rewritten.
 
 ## What this replaces
 
@@ -363,12 +367,29 @@ took three extra IAM grants and a `cloudbuild.yaml` logging change — see
    project.
 2. Add the Cloud Run domain mapping for `homeschool.amaska.ca`; add the
    CNAME record Cloud Run provides at the registrar.
-3. Smoke-test end-to-end on the real domain with the login gate on.
-4. Retire the old path: stop the Windows self-hosted deploy, decommission
-   `homeschool-mongo` once Atlas has been the source of truth for a while,
-   and remove `docker-compose.prod.yaml` (local `docker-compose.yaml` for
-   dev is unaffected). `deploy.yml` itself is rewritten as part of Phase 2/4
-   rather than kept around — see the CI/CD decision above.
+3. Smoke-test end-to-end on the real domain with the login gate on. Steps
+   1-3 can happen any time; they don't touch the family's live data.
+4. **Final data copy — the actual cutover moment** (added 2026-10-06). Atlas
+   only holds the one-off copy from Phase 1 (2026-09-22); the family has
+   kept writing to `homeschool-mongo` via the self-hosted app since. Steps
+   4 and 5 must happen back to back so nobody writes to the old DB after
+   the copy:
+   - pick a quiet time and ask the family not to use the home app for a bit
+   - `mongodump` `homeschool-mongo` to an out-of-band backup and keep it
+   - `mongodump` → `mongorestore --drop` into Atlas (`--drop` replaces the
+     stale Phase 1 copy and any test clicks made on the `*.run.app` URL),
+     following the [migration safety checklist](TASKS.md#working-agreements)
+     — log the target host/DB name before writing
+   - open the domain and confirm recently completed lessons show up
+5. Switch over: tell the family to use `homeschool.amaska.ca` from now on,
+   and stop running **Deploy (self-hosted)**.
+6. Retire the old path once Atlas has been the source of truth for a while:
+   delete `deploy.yml` and `docker-compose.prod.yaml` (local
+   `docker-compose.yaml` for dev is unaffected), unregister the Windows
+   self-hosted runner, and decommission `homeschool-mongo`. Set up the
+   periodic Atlas `mongodump` from Phase 1 step 4 before decommissioning —
+   Atlas M0 has no backups of its own, so until then the old container is
+   effectively the only fallback copy of the data.
 
 ## First deploy: what actually happened (2026-09-22, narrated walkthrough)
 
@@ -451,6 +472,168 @@ commands run by hand.
 **Update 2026-10-06:** the env-var cleanup and the one-click deploy are both
 done — see Phase 2 above. The one-click deploy ended up as a separate
 `deploy-cloudrun.yml` rather than a rewrite of `deploy.yml`.
+
+## How a one-click CI deploy works (2026-10-06, narrated walkthrough)
+
+The "First deploy" section above is the *manual* path: `gcloud` commands run
+by hand from the devcontainer, as `alvin991@gmail.com`. This section is the
+same journey done by `.github/workflows/deploy-cloudrun.yml`, step by step,
+with the file and line that does each step. Read it alongside the workflow
+file. (For GitHub Actions basics — what a workflow, job, step and runner
+are — see [github-actions-tutorial.md](github-actions-tutorial.md) first.)
+
+```
+ You click "Run workflow" (Actions → Deploy (Cloud Run), branch: main)
+   │
+   ▼
+ GitHub-hosted Ubuntu VM ─ 1. checkout code at the chosen commit
+   │                       2. ask GitHub for an OIDC token ("I am a run of alvin991/homeschool-planner")
+   │                       3. trade it with GCP for short-lived github-deployer credentials (WIF)
+   │                       4. gcloud builds submit ──────────┐
+   │                                                         ▼
+   │                                   Cloud Storage: <project>_cloudbuild bucket (source .tgz)
+   │                                                         ▼
+   │                                   Cloud Build: runs cloudbuild.yaml → docker build
+   │                                                         ▼
+   │                                   Artifact Registry: image tagged :<commit sha>
+   │                       5. deploy-cloudrun action ────────┐
+   │                                                         ▼
+   │                                   Cloud Run: new revision from that image,
+   │                                   MONGODB_URI mounted from Secret Manager,
+   │                                   100% of traffic moved to it
+   ▼
+ 6. "Show deployed URL" prints the *.run.app URL
+```
+
+1. **A fresh VM starts and checks out the code.** `runs-on: ubuntu-latest`
+   means GitHub lends a brand-new Linux VM for this one job and deletes it
+   afterward — unlike `deploy.yml`, which runs on your own Windows machine.
+   `actions/checkout@v4` downloads the repo at the commit the run was
+   started from (`github.sha`). Nothing from previous runs survives on
+   this VM, which is why every run rebuilds from scratch.
+
+2. **GitHub hands the job an identity token.** `permissions: id-token: write`
+   in the workflow lets the job request an **OIDC token** from GitHub — a
+   short-lived, GitHub-signed statement like *"this is a workflow run of
+   repo `alvin991/homeschool-planner`, ref `refs/heads/main`"*. It's not a
+   GCP credential yet; it's proof of *who is asking*.
+
+3. **GCP trades that token for real, temporary credentials.**
+   `google-github-actions/auth@v2` sends the OIDC token to GCP. GCP checks
+   it against the WIF setup above: is it signed by GitHub
+   (`--issuer-uri`)? Is it from *this* repo (`--attribute-condition`)? Is
+   this repo allowed to act as `github-deployer` (the
+   `workloadIdentityUser` binding)? If all yes, GCP issues an access token
+   for `github-deployer`, valid for about an hour. The action writes it to a
+   `gha-creds-*.json` file — you can see that path in the run log as
+   `GOOGLE_APPLICATION_CREDENTIALS` — and every later `gcloud` command in
+   the job uses it. **No password or key is stored anywhere**: that's the
+   whole point of WIF. The file is deleted by the "Post Run
+   google-github-actions/auth" cleanup step.
+
+4. **The image is built by Cloud Build, not on the VM.**
+   `gcloud builds submit --config=cloudbuild.yaml` does three things:
+   - **Packs and uploads the source.** It tars the checked-out repo
+     (honoring `.gitignore`, since there's no `.gcloudignore` — that's the
+     log line "Some files were not included in the source upload") and
+     uploads it to the `homeschool-planner-509220_cloudbuild` storage
+     bucket. This is the step that needed the extra storage grants.
+   - **Starts a build** on Google's machines, which follows
+     `cloudbuild.yaml`: one `docker build` of the `Dockerfile`'s `runner`
+     stage, passing `NEXT_PUBLIC_DEFAULT_STUDENT_ID` as a `--build-arg`.
+     The build itself runs as the **compute** service account (see "Who's
+     who" below), not as `github-deployer`.
+   - **Pushes the image** to Artifact Registry, tagged with the commit SHA
+     (`_IMAGE_TAG=${{ github.sha }}`), and waits, streaming the build's
+     logs into the GitHub run (that's what `logging: CLOUD_LOGGING_ONLY` +
+     `roles/logging.viewer` made possible). About 5 minutes, mostly
+     `npm ci` and `next build`.
+
+5. **Cloud Run gets a new revision.**
+   `google-github-actions/deploy-cloudrun@v2` tells Cloud Run: run *this*
+   image for service `homeschool-planner`. Cloud Run creates a new
+   **revision** — an immutable snapshot of "this image + these settings"
+   (named like `homeschool-planner-00003-qq2`) — mounts the `mongodb-uri`
+   secret as the `MONGODB_URI` env var, starts it, and once it's healthy
+   moves 100% of traffic to it. Old revisions are kept (not running, just
+   remembered), which is what makes rollback a one-liner — see "Operating
+   it" below.
+
+6. **The run prints the URL** and the cleanup ("Post Run") steps delete the
+   credentials file. The VM is then thrown away.
+
+### Who's who: the four identities involved
+
+Most permission errors in this project have come from the *wrong identity*
+lacking a grant, so it's worth knowing which one is acting at each moment:
+
+| Identity | What it is | Acts when… | Key permissions |
+|---|---|---|---|
+| `alvin991@gmail.com` | You, a human | You run `gcloud` in the devcontainer | `roles/owner` — can do anything, which is why manual commands "just work" and hide missing grants |
+| `github-deployer@…iam.gserviceaccount.com` | Robot account for CI, created for WIF | Steps 3–5 above, inside the GitHub run | Only the 8 grants listed in the WIF setup section |
+| `616908089248-compute@developer.gserviceaccount.com` | GCP's default compute robot account | **Building** the image in Cloud Build *and* **running** the app in Cloud Run | `roles/editor` (project-wide default) + `secretAccessor` on `mongodb-uri` |
+| `616908089248@cloudbuild.gserviceaccount.com` | Cloud Build's *legacy* robot account | Not used by our builds — newer projects default to the compute account above | (shown in the IAM policy; ignore) |
+
+`roles/iam.serviceAccountUser` on `github-deployer` is the bridge between
+rows 2 and 3: it lets the deployer tell Cloud Run *"run this revision as the
+compute account"*. Check which account a build used with
+`gcloud builds list --limit=1 --format="value(serviceAccount)"`.
+
+### Operating it: what's live, logs, rollback
+
+**Which commit is live?** Every image is tagged with its commit SHA, so:
+```bash
+gcloud run services describe homeschool-planner --region=us-west1 \
+  --format="value(spec.template.spec.containers[0].image)"
+# → …/homeschool-planner:3c57edf56d8579a5f9cea7124858cb32ae381fe9
+
+git show --stat 3c57edf           # what that commit is
+git log --oneline 3c57edf..main   # what's merged but NOT deployed yet
+```
+Or in the console: **Cloud Run → homeschool-planner → Revisions** (top row
+is serving). Or in GitHub: the newest green run of **Deploy (Cloud Run)**.
+
+**Reading the app's logs** (errors, `console.log` output from resolvers):
+```bash
+gcloud run services logs read homeschool-planner --region=us-west1 --limit=50
+```
+Console equivalent: **Cloud Run → homeschool-planner → Logs**.
+
+**Rolling back a bad deploy.** You don't need to rebuild anything — old
+revisions still exist, so just move traffic back:
+```bash
+gcloud run revisions list --service=homeschool-planner --region=us-west1   # find the previous good one
+gcloud run services update-traffic homeschool-planner --region=us-west1 \
+  --to-revisions=homeschool-planner-00002-vld=100
+```
+This takes seconds. Traffic now stays **pinned** to that revision. Once a
+fix is merged and deployed, unpin it so the newest revision serves again,
+then confirm with `describe` that traffic shows `latestRevision: true`:
+```bash
+gcloud run services update-traffic homeschool-planner --region=us-west1 --to-latest
+```
+Rollback only changes **code**. It doesn't undo **data** changes the bad
+revision made in Atlas — for that you need a `mongodump` backup.
+
+**GitHub says the build step failed — did it really?** `gcloud builds submit`
+can fail *after* the build finished (that's exactly what the
+log-streaming error did on 2026-10-06). Check Cloud Build's own verdict:
+```bash
+gcloud builds list --limit=3     # STATUS column: SUCCESS / FAILURE / WORKING
+gcloud builds describe <BUILD_ID> --format="value(status)"
+```
+If the image built but the job failed, the deploy step was **skipped**, so
+nothing changed on Cloud Run. Fix the cause and run the workflow again.
+
+**Re-run vs. a new run.** GitHub's **Re-run jobs** repeats the *same
+commit*, including the old copies of `deploy-cloudrun.yml` and
+`cloudbuild.yaml`. Re-run is right when only something *outside* the repo
+changed (e.g. you just added an IAM grant). If you changed a file in the
+repo, merge it and start a **new** run with **Run workflow** instead.
+
+**Cost check.** Console → **Billing → Reports**, filtered to this project.
+Expected: $0. The Budget Alert recommended in "Decisions locked" emails you
+if not — check **Billing → Budgets & alerts** that it actually exists.
 
 ## Reference: GCP IAM, and how to add/rotate a Secret Manager secret
 

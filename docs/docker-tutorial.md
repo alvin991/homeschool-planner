@@ -339,6 +339,11 @@ docker network inspect homeschool-net
 
 ## Where to go from here
 
+- [github-actions-tutorial.md](github-actions-tutorial.md) — the companion
+  tutorial: how `deploy.yml` gets from a button click in GitHub to running
+  `docker compose -f docker-compose.prod.yaml up -d --build` on the Windows
+  machine (runners, triggers, variables vs. secrets).
+
 - [RUNNING_MIGRATIONS.md](RUNNING_MIGRATIONS.md) — a good next read: shows a
   *third* pattern, a throwaway container attached to `homeschool-net` at
   migration-run time only, using `npm ci --include=dev` because
