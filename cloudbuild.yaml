@@ -31,3 +31,10 @@ steps:
 
 images:
   - us-west1-docker.pkg.dev/${PROJECT_ID}/homeschool-planner/homeschool-planner:${_IMAGE_TAG}
+
+# Send build logs to Cloud Logging only (not the default GCS logs bucket). The
+# default bucket can only be streamed by project Viewer/Owner, so the CI
+# deployer (github-deployer, roles/logging.viewer) couldn't stream it and
+# `gcloud builds submit` failed even though the build itself succeeded.
+options:
+  logging: CLOUD_LOGGING_ONLY
